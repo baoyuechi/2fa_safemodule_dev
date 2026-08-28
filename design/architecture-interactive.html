@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>ISA Spectrum · 可插拔 MFA 模块 · 交互式架构图</title>
+<style>
+  :root{
+    --host-fill:#eaf3ff; --host-stroke:#5b8dd6;
+    --mfa-fill:#fff7e6;  --mfa-stroke:#d99114;
+    --ext-fill:#eef7ee;  --ext-stroke:#4c9a52;
+    --sub-stroke:#b9c6d8;
+    --ink:#2b3a4a;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{font-family:"PingFang SC","Microsoft YaHei",system-ui,sans-serif; background:#f4f6f9; color:var(--ink); height:100vh; display:flex; flex-direction:column; overflow:hidden;}
+  header{padding:10px 18px; background:#fff; border-bottom:1px solid #e3e8ef;}
+  header h1{font-size:17px; font-weight:700;}
+  header p{font-size:12px; color:#68788c; margin-top:2px;}
+  #toolbar{display:flex; gap:8px; padding:8px 18px; background:#fff; border-bottom:1px solid #e3e8ef; flex-wrap:wrap; align-items:center;}
+  #toolbar button{border:1px solid #c8d3e0; background:#fff; padding:6px 14px; border-radius:16px; font-size:13px; cursor:pointer; color:#3b4a5c;}
+  #toolbar button:hover{border-color:#5b8dd6; color:#2f6bbf;}
+  #toolbar button.on{background:#2f6bbf; border-color:#2f6bbf; color:#fff;}
+  #toolbar .spacer{flex:1;}
+  #toolbar .hint{font-size:12px; color:#8a99ab;}
+  main{flex:1; display:flex; min-height:0;}
+  #canvasWrap{flex:1; position:relative; min-width:0;}
+  svg{width:100%; height:100%; display:block; cursor:grab; touch-action:none;}
+  svg.dragging{cursor:grabbing;}
+  /* —— 图元 —— */
+  .group-box{fill:#fbfcfe; stroke:var(--sub-stroke); stroke-width:1.5; rx:10;}
+  .group-host{fill:var(--host-fill); stroke:var(--host-stroke);}
+  .group-mfa{fill:var(--mfa-fill); stroke:var(--mfa-stroke); stroke-width:2.5;}
+  .group-ext{fill:var(--ext-fill); stroke:var(--ext-stroke);}
+  .group-title{font-size:13px; font-weight:700; fill:#44566b;}
+  .node-box{fill:#fff; stroke:#8fa3ba; stroke-width:1.2; rx:7; cursor:pointer;}
+  .node-box:hover{stroke:#2f6bbf; stroke-width:2;}
+  .node-mfa-fe{stroke:var(--mfa-stroke);}
+  .node-mfa-ef{stroke:#b3541e; fill:#fff4ec;}
+  .node-mfa-db{stroke:#7a5fb5; fill:#f5f0fc;}
+  .node-title{font-size:12.5px; font-weight:600; fill:var(--ink); pointer-events:none;}
+  .node-sub{font-size:10px; fill:#7a8a9c; pointer-events:none;}
+  .edge{fill:none; stroke:#9db1c7; stroke-width:1.6;}
+  .edge.hook{stroke-dasharray:6 4; stroke:#2aa198;}
+  .edge.api{stroke:#2f6bbf;}
+  .edge.data{stroke:#7a5fb5;}
+  .edge.ext{stroke:#d99114;}
+  .edge.biz{stroke:#9aa8b8; stroke-dasharray:2 3;}
+  .edge.sdk{stroke:#b3924f;}
+  .edge.rls{stroke:#2aa198;}
+  .edge-label{font-size:10px; fill:#5d7089; paint-order:stroke; stroke:#f4f6f9; stroke-width:3px;}
+  svg.flow-on .edge{opacity:.10;}
+  svg.flow-on .edge.active{opacity:1; stroke-width:3.2;}
+  svg.flow-on .edge-label{opacity:.10;}
+  svg.flow-on .edge-label.active{opacity:1; font-weight:700;}
+  svg.flow-on .node{opacity:.28;}
+  svg.flow-on .node.lit{opacity:1;}
+  svg.flow-on .group{opacity:.45;}
+  svg.flow-on .group.lit{opacity:1;}
+  /* —— 详情面板 —— */
+  #panel{width:340px; background:#fff; border-left:1px solid #e3e8ef; overflow-y:auto; padding:18px; display:none;}
+  #panel.open{display:block;}
+  #panel h2{font-size:15px; margin-bottom:2px;}
+  #panel .tag{display:inline-block; font-size:11px; padding:2px 8px; border-radius:10px; background:#eef3fa; color:#3b5b82; margin:6px 4px 10px 0;}
+  #panel p{font-size:13px; line-height:1.7; margin-bottom:10px;}
+  #panel li{font-size:12.5px; line-height:1.8; margin-left:18px;}
+  #panel .doc{font-size:12px; color:#2f6bbf; margin-top:12px; border-top:1px dashed #dde5ee; padding-top:10px;}
+  #panel .close{float:right; border:none; background:none; font-size:16px; cursor:pointer; color:#8a99ab;}
+  footer{padding:6px 18px; font-size:11.5px; color:#8a99ab; background:#fff; border-top:1px solid #e3e8ef;}
+  footer b{color:#4c5d70;}
+</style>
+</head>
+<body>
+<header>
+  <h1>ISA Spectrum · 可插拔 MFA 模块 · 交互式架构图</h1>
+  <p>对应文档：Part 2（模块边界）· Part 4（核心流程）· Part 5（数据与API契约） | H1–H7 = 宿主挂钩点</p>
+</header>
+<div id="toolbar">
+  <button class="on" data-flow="all">全部链路</button>
+  <button data-flow="f1">① 指纹直登</button>
+  <button data-flow="f2">② 注册链路</button>
+  <button data-flow="f3">③ 互动门槛</button>
+  <button data-flow="f4">④ 恢复链路</button>
+  <button data-flow="f5">⑤ 审核门禁</button>
+  <span class="spacer"></span>
+  <button id="resetView">重置视图</button>
+  <span class="hint">滚轮缩放 · 拖拽平移 · 点击节点看详情</span>
+</div>
+<main>
+  <div id="canvasWrap"><svg id="svg" viewBox="0 0 1720 1000"></svg></div>
+  <aside id="panel"><button class="close" id="panelClose">✕</button><div id="panelBody"></div></aside>
+</main>
+<footer>
+  图例：<b>蓝实线</b>=前端→Edge Function API 调用　<b>紫线</b>=服务端读写数据表　<b>橙色线</b>=外部服务　<b>绿虚线</b>=宿主挂钩（可拔插的关键：宿主只认这一个接口）　<b>灰虚线</b>=业务原有读写（模块不碰）
+</footer>
+
+<script>
+'use strict';
+/* ================= 数据定义 ================= */
+const GROUPS = [
+  {id:'g-host', x:40,  y:100, w:470, h:560, cls:'group-host', title:'宿主站点 · 业务平台（原文件，改动仅限挂钩）'},
+  {id:'g-mfa',  x:560, y:80,  w:600, h:870, cls:'group-mfa',  title:'★ 可插拔 MFA 模块（拔走 = 删除本区域）'},
+  {id:'g-ext',  x:1220,y:100, w:440, h:640, cls:'group-ext',  title:'外部服务'},
+];
+
+const NODES = [
+  /* 宿主页面 */
+  {id:'login',    g:'g-host', x:70,  y:150, w:170, h:46, t:'login.html',        s:'钩子H1 · 密码兜底入口',
+   d:{tag:'宿主页面', role:'原登录页。改动仅两行：引入 mfa.js + 登录成功回调处调用 ISAMFA.login() 接管后续（风控判定与跳转）。', pts:['密码兜底通道的宿主侧入口','Turnstile 换用健壮加载器'], docs:'Part 2 §1(H1) · Part 4 §4.3'}},
+  {id:'register', g:'g-host', x:70,  y:210, w:170, h:46, t:'register.html',     s:'钩子H3 · 注册插桩',
+   d:{tag:'宿主页面', role:'原注册页。提交前插入：服务端校域邮箱校验 → 手机 OTP 验证 → signUp。', pts:['FR-1 域名白名单（服务端强制）','FR-2 一次性手机验证'], docs:'Part 2 §1(H3) · Part 4 §4.2'}},
+  {id:'messages', g:'g-host', x:70,  y:270, w:170, h:46, t:'messages.html',     s:'钩子H4 · 发帖门槛',
+   d:{tag:'宿主页面', role:'校墙主页面。初始化时调用 ISAMFA.interactionStatus()，未绑指纹则发帖框置灰+引导卡。', pts:['FR-8 只可浏览不可发言','服务端兜底校验 enabled'], docs:'Part 2 §1(H4) · Part 4 §4.12'}},
+  {id:'details',  g:'g-host', x:70,  y:330, w:170, h:46, t:'details.html',      s:'钩子H5 · 评论门槛',
+   d:{tag:'宿主页面', role:'详情/评论页。与 messages 相同的互动门槛逻辑。', pts:['FR-8.1 覆盖回复与匿名留言'], docs:'Part 2 §1(H5) · Part 4 §4.12'}},
+  {id:'checker',  g:'g-host', x:70,  y:390, w:170, h:46, t:'checker 三页',       s:'钩子H6 · 强制指纹门禁',
+   d:{tag:'宿主页面', role:'pending/approved/deleted 三个审核页。checkAuth() 尾部追加 ISAMFA.checkerGate()：无有效指纹因子不得加载审核数据。', pts:['决策A：审核员强制指纹','FR-9.6 密码会话不得入审核台'], docs:'Part 2 §1(H6) · Part 4 §4.10'}},
+  {id:'header',   g:'g-host', x:70,  y:450, w:170, h:46, t:'header.html 头像菜单', s:'钩子H7 · 安全中心入口',
+   d:{tag:'宿主页面', role:'头像下拉新增“安全中心”菜单项，跳转模块页面。', pts:['FR-7 管理员兜底入口也在此'], docs:'Part 2 §1(H7)'}},
+  {id:'publicpg', g:'g-host', x:70,  y:510, w:170, h:46, t:'其余公开页',          s:'零接触',
+   d:{tag:'宿主页面', role:'index/main/notice/about/download 等公开页与本模块完全无关，一行代码都不改。', pts:['体现“可插拔”的边界'], docs:'Part 2 §6'}},
+  /* 宿主业务数据 */
+  {id:'bizdata',  g:'g-host', x:290, y:150, w:200, h:400, t:'业务数据', s:'messages · notifications · logs\nprofiles · checkers · Storage',
+   d:{tag:'宿主数据', role:'既有业务表与存储桶，本模块不读不写（通知例外：只按现有机制追加记录）。', pts:['messages 留言 / notifications 通知','logs 审计（模块追加 MFA 事件）','checkers 白名单（审核门禁数据源）'], docs:'Part 2 §6 · Part 5 §一'}},
+  /* MFA 前端 */
+  {id:'config',   g:'g-mfa', x:600, y:170, w:170, h:52, cls:'node-mfa-fe', t:'mfa.config.js', s:'域名白名单·风控参数·总开关',
+   d:{tag:'模块·前端', role:'唯一配置层。ENABLED:false 时全部钩子退化为直通（NFR-3 一键回退）。', pts:['rpID=celestivast.com 锁定','timeout 300s（G7）','恢复码=10（决策D）'], docs:'Part 2 §2 · Part 5 §五'}},
+  {id:'sdk',      g:'g-mfa', x:600, y:250, w:170, h:70, cls:'node-mfa-fe', t:'mfa.js  (window.ISAMFA)', s:'模块唯一对外接口',
+   d:{tag:'模块·前端', role:'前端 SDK：WebAuthn 编排、风控调用、UI 卡片渲染、统一错误字典。宿主对模块的全部认知 = 这个对象。', pts:['login() / beginEnrollment()','interactionStatus() / checkerGate()','errors.translate() 统一中文报错'], docs:'Part 2 §5 契约表'}},
+  {id:'loginfido',g:'g-mfa', x:820, y:170, w:150, h:52, cls:'node-mfa-fe', t:'login-fido.html', s:'统一登录壳',
+   d:{tag:'模块·页面', role:'指纹直登 + 密码兜底双路径合一。<head> 内早期启动 Conditional UI（autocomplete=webauthn）。', pts:['常态：只刷指纹免密码','浏览器自动取消待处理请求'], docs:'Part 2 §4 · Part 4 §4.5'}},
+  {id:'regphone', g:'g-mfa', x:820, y:250, w:150, h:52, cls:'node-mfa-fe', t:'register-phone.html', s:'注册期手机验证插页',
+   d:{tag:'模块·页面', role:'注册流程中的一次性手机验证步骤页。', pts:['FR-2 一次性·此后封存'], docs:'Part 4 §4.2'}},
+  {id:'enroll',   g:'g-mfa', x:820, y:320, w:150, h:52, cls:'node-mfa-fe', t:'enroll.html', s:'指纹绑定引导',
+   d:{tag:'模块·页面', role:'Touch ID 绑定流程页，完成后一次性展示 10 条恢复码。', pts:['uvInitialized 建立（G1）','互动门槛实时解除'], docs:'Part 4 §4.4'}},
+  {id:'seccenter',g:'g-mfa', x:1000,y:170, w:150, h:52, cls:'node-mfa-fe', t:'security-center.html', s:'安全中心',
+   d:{tag:'模块·页面', role:'设备列表 / 恢复码余量 / 手机号摘要 / 管理员兜底操作。', pts:['G3：备份状态变化提示','G5：解绑后 signal 同步'], docs:'Part 4 §4.9/4.11'}},
+  {id:'recover',  g:'g-mfa', x:1000,y:250, w:150, h:52, cls:'node-mfa-fe', t:'recover.html', s:'恢复 / 挂起',
+   d:{tag:'模块·页面', role:'恢复码进门 + 一键挂起（盗号场景）。', pts:['双因子：邮箱链接+恢复码','挂起=全凭据冻结'], docs:'Part 4 §4.7/4.8'}},
+  /* Edge Functions */
+  {id:'efweb',    g:'g-mfa', x:600, y:520, w:170, h:64, cls:'node-mfa-ef', t:'webauthn 端点 ×4', s:'注册/登录验证·挑战管理',
+   d:{tag:'模块·服务端', role:'generate/verify Registration·Authentication options。simplewebauthn/server（Deno 原生）。', pts:['G1：UV 位必须=1','G2：crossOrigin=true 拒绝','G4：凭据≤1023B+全局唯一','counter 检查（Touch ID 恒 0 豁免）'], docs:'Part 5 §三(5–8)'}},
+  {id:'efaccount',g:'g-mfa', x:820, y:520, w:150, h:64, cls:'node-mfa-ef', t:'phone 端点 ×3', s:'校域邮箱校验·OTP',
+   d:{tag:'模块·服务端', role:'check-email-domain / send-otp / verify-otp / bind。域名白名单服务端强制。', pts:['FR-1.2 不可仅前端校验','限速落 Postgres 共享计数'], docs:'Part 5 §三(1–4)'}},
+  {id:'efrecov',  g:'g-mfa', x:1000,y:520, w:150, h:64, cls:'node-mfa-ef', t:'recovery/security ×4', s:'恢复码·解绑·挂起',
+   d:{tag:'模块·服务端', role:'recovery/use / regenerate / security/unbind / suspend。全部写 logs。', pts:['恢复码只存 SHA-256','解绑触发 signalUnknownCredential'], docs:'Part 5 §三(9–12)'}},
+  {id:'efrisk',   g:'g-mfa', x:600, y:620, w:170, h:52, cls:'node-mfa-ef', t:'risk/evaluate', s:'风控矩阵（内部端点）',
+   d:{tag:'模块·服务端', role:'信号采集：新设备/校外网络/凌晨首用/24h 敏感事件。判定结果写 risk_events。', pts:['等级序：绝不反问密码','高危→24h 受限模式'], docs:'Part 4 §4.6'}},
+  {id:'efbridge', g:'g-mfa', x:820, y:620, w:330, h:52, cls:'node-mfa-ef', t:'会话桥接（login-verify 内部）', s:'service_role generate_link → token_hash → verifyOtp',
+   d:{tag:'模块·服务端', role:'Part 3 方案A：WebAuthn 验签通过后，由服务端生成一次性票据，浏览器 verifyOtp 兑换 Supabase 标准会话（与正常登录同构，RLS 全兼容）。', pts:['fail-closed：票据绑定会话上下文'], docs:'Part 3 §4 时序图'}},
+  /* 数据表 */
+  {id:'tb_enroll',g:'g-mfa', x:600, y:760, w:165, h:40, cls:'node-mfa-db', t:'mfa_enrollments', s:'门槛/受限/挂起状态',
+   d:{tag:'模块·数据', role:'enabled=互动门槛判据；restricted_until=24h 受限；suspended=挂起。用户可 RLS 读自身。', pts:['FR-8 / FR-9.5 / FR-6.3'], docs:'Part 5 §一①'}},
+  {id:'tb_cred',  g:'g-mfa', x:780, y:760, w:180, h:40, cls:'node-mfa-db', t:'webauthn_credentials', s:'公钥·counter·BE/BS·UV',
+   d:{tag:'模块·数据', role:'L3 credential record 全字段。只许 service_role 写，用户只读自身设备摘要。', pts:['G1 uvInitialized','G3 backupEligible/State'], docs:'Part 5 §一②'}},
+  {id:'tb_rc',    g:'g-mfa', x:975, y:760, w:150, h:40, cls:'node-mfa-db', t:'recovery_codes', s:'10条/批·只存hash',
+   d:{tag:'模块·数据', role:'批次管理，进门即撤销旧批重发（FR-6.2/6.5）。RLS 全拒。', pts:['决策D：10条'], docs:'Part 5 §一④'}},
+  {id:'tb_chal',  g:'g-mfa', x:600, y:820, w:180, h:40, cls:'node-mfa-db', t:'webauthn_challenges', s:'挑战暂存·TTL 300s',
+   d:{tag:'模块·数据', role:'单次有效的 challenge 暂存（G7）。定时清理过期行。', pts:['防重放根本机制'], docs:'Part 5 §一③'}},
+  {id:'tb_otp',   g:'g-mfa', x:795, y:820, w:140, h:40, cls:'node-mfa-db', t:'otp_tokens', s:'短信/邮件一次性票据',
+   d:{tag:'模块·数据', role:'phone OTP 与邮件动作确认的一次性凭证，5 分钟有效。', pts:['FR-2'], docs:'Part 5 §一⑥'}},
+  {id:'tb_phone', g:'g-mfa', x:950, y:820, w:165, h:40, cls:'node-mfa-db', t:'phone_bindings', s:'一号一户·只存hash',
+   d:{tag:'模块·数据', role:'手机号档案（注册一次验证，永不参与登录）。展示仅尾四位。', pts:['FR-2.2/2.3'], docs:'Part 5 §一⑤'}},
+  {id:'tb_risk',  g:'g-mfa', x:600, y:880, w:180, h:40, cls:'node-mfa-db', t:'risk_events', s:'风控判定留痕',
+   d:{tag:'模块·数据', role:'每次判定写信号数组与处置动作，供复盘“为什么要多验一次”。', pts:['FR-9.4'], docs:'Part 5 §一⑦'}},
+  {id:'tb_rate',  g:'g-mfa', x:795, y:880, w:180, h:40, cls:'node-mfa-db', t:'rate_limits', s:'共享限速计数',
+   d:{tag:'模块·数据', role:'serverless 多实例下限速必须落共享存储（Passkey-2fa 文档教训），不能放函数内存。', pts:['恢复码爆破/OTP 滥用防护'], docs:'Part 5 §三'}},
+  /* 外部服务 */
+  {id:'gotrue',   g:'g-ext', x:1250,y:160, w:180, h:66, t:'Supabase Auth (GoTrue)', s:'会话签发·JWT',
+   d:{tag:'外部服务', role:'既有会话体系，原样沿用。桥接兑换的会话与正常登录完全同构。', pts:['AAL1 密码会话','verifyOtp 兑换入口'], docs:'Part 3 §4'}},
+  {id:'rls',      g:'g-ext', x:1460,y:160, w:170, h:66, t:'RLS 策略', s:'授权最后闸门',
+   d:{tag:'外部服务', role:'数据库防火墙。本模块新增表的策略随仓库归档（回应审计 H-2“看不见的防线”）。', pts:['全拒默认·显性放行'], docs:'Part 5 §二'}},
+  {id:'bizrest',  g:'g-ext', x:1250,y:250, w:180, h:56, t:'Supabase REST', s:'业务表读写',
+   d:{tag:'外部服务', role:'宿主页面的业务数据通道，本模块不经过也不改道。', pts:['模块零侵入的体现'], docs:'Part 2 §6'}},
+  {id:'turnstile',g:'g-ext', x:1250,y:330, w:180, h:56, t:'Cloudflare Turnstile', s:'人机验证',
+   d:{tag:'外部服务', role:'注册/密码兜底/恢复页使用；模块页面配健壮加载器（retry:auto + onerror 重试 UI）。', pts:['线上问题2修复落位'], docs:'Part 4 §4.0'}},
+  {id:'sms',      g:'g-ext', x:1250,y:410, w:180, h:56, t:'腾讯云短信', s:'注册一次性验证码',
+   d:{tag:'外部服务', role:'仅注册时使用一次（决策C）。接口抽象成可替换供应商。', pts:['此后永不参与登录'], docs:'Part 4 §4.2'}},
+  {id:'mailbox',  g:'g-ext', x:1250,y:490, w:180, h:66, t:'校域邮箱', s:'激活·恢复链接·警告信',
+   d:{tag:'外部服务', role:'邮件送达率是模块安全依赖（恢复/高危核验）。上线前置项：DKIM/DMARC 整改。', pts:['线上问题1前置项'], docs:'Part 4 §4.13'}},
+];
+
+/* kind: hook|api|data|ext|biz|sdk|rls ; flows: f1..f5 */
+const EDGES = [
+  /* 宿主钩子 */
+  {f:'login',    t:'sdk',      k:'hook', lb:'H1 登录接管',        fl:['f1']},
+  {f:'register', t:'sdk',      k:'hook', lb:'H3 注册插桩',        fl:['f2']},
+  {f:'messages', t:'sdk',      k:'hook', lb:'H4 互动门槛',        fl:['f3']},
+  {f:'details',  t:'sdk',      k:'hook', lb:'H5 评论门槛',        fl:['f3']},
+  {f:'checker',  t:'sdk',      k:'hook', lb:'H6 checkerGate',    fl:['f5']},
+  {f:'header',   t:'sdk',      k:'hook', lb:'H7 安全中心入口',     fl:[]},
+  /* 页面装载 SDK */
+  {f:'sdk',      t:'loginfido', k:'sdk', lb:'',                  fl:['f1']},
+  {f:'sdk',      t:'regphone',  k:'sdk', lb:'',                  fl:['f2']},
+  {f:'sdk',      t:'enroll',    k:'sdk', lb:'',                  fl:['f4']},
+  {f:'sdk',      t:'seccenter', k:'sdk', lb:'',                  fl:[]},
+  {f:'sdk',      t:'recover',   k:'sdk', lb:'',                  fl:['f4']},
+  {f:'config',   t:'sdk',       k:'sdk', lb:'读取配置',           fl:[]},
+  /* 前端 → Edge Functions */
+  {f:'sdk',      t:'efweb',    k:'api',  lb:'webauthn ×4 端点',   fl:['f1','f4']},
+  {f:'sdk',      t:'efaccount',k:'api',  lb:'check-domain/OTP',  fl:['f2']},
+  {f:'sdk',      t:'efrecov',  k:'api',  lb:'recovery/security', fl:['f4']},
+  {f:'sdk',      t:'efrisk',   k:'api',  lb:'risk/evaluate',     fl:['f1','f2']},
+  /* Edge Functions → 数据表 */
+  {f:'efweb',    t:'tb_cred',  k:'data', lb:'存公钥/counter',     fl:['f1','f4']},
+  {f:'efweb',    t:'tb_chal',  k:'data', lb:'挑战暂存·单次',       fl:['f1','f4']},
+  {f:'efaccount',t:'tb_otp',   k:'data', lb:'OTP 暂存',           fl:['f2']},
+  {f:'efaccount',t:'tb_phone', k:'data', lb:'一号一户绑定',        fl:['f2']},
+  {f:'efrecov',  t:'tb_rc',    k:'data', lb:'hash 比对·批次',      fl:['f4']},
+  {f:'efrecov',  t:'tb_cred',  k:'data', lb:'解绑/挂起',          fl:['f4']},
+  {f:'efrisk',   t:'tb_risk',  k:'data', lb:'判定留痕',           fl:['f1','f2']},
+  {f:'efrisk',   t:'tb_enroll',k:'data', lb:'restricted_until',  fl:['f1']},
+  /* 门槛读状态（RLS 只读） */
+  {f:'sdk',      t:'tb_enroll',k:'rls',  lb:'interactionStatus 只读', fl:['f3']},
+  /* 桥接与外部 */
+  {f:'efbridge', t:'gotrue',   k:'ext',  lb:'generate_link(service_role)', fl:['f1','f4']},
+  {f:'loginfido',t:'gotrue',   k:'ext',  lb:'verifyOtp 兑换会话',  fl:['f1','f4']},
+  {f:'efaccount',t:'sms',      k:'ext',  lb:'发送 OTP',           fl:['f2']},
+  {f:'gotrue',   t:'mailbox',  k:'ext',  lb:'激活邮件',           fl:['f2']},
+  {f:'efrecov',  t:'mailbox',  k:'ext',  lb:'恢复确认链接',        fl:['f4']},
+  {f:'loginfido',t:'turnstile',k:'ext',  lb:'兜底通道人机验证',     fl:['f1']},
+  {f:'register', t:'turnstile',k:'ext',  lb:'人机验证',           fl:['f2']},
+  /* 宿主业务线（模块不碰） */
+  {f:'messages', t:'bizrest',  k:'biz',  lb:'业务读写照旧',        fl:['f3']},
+  {f:'details',  t:'bizrest',  k:'biz',  lb:'业务读写照旧',        fl:['f3']},
+  {f:'bizrest',  t:'rls',      k:'ext',  lb:'策略校验',           fl:['f3']},
+];
+
+/* ================= 渲染 ================= */
+const svg = document.getElementById('svg');
+const NS = 'http://www.w3.org/2000/svg';
+const el = (n, attrs) => { const e = document.createElementNS(NS, n); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; };
+const center = n => ({x:n.x + n.w/2, y:n.y + n.h/2});
+const byId = Object.fromEntries(NODES.map(n => [n.id, n]));
+
+function edgePath(a, b){
+  const p1 = center(a), p2 = center(b);
+  const dx = p2.x - p1.x, dy = p2.y - p1.y;
+  const cx = (p1.x + p2.x)/2, cy = (p1.y + p2.y)/2;
+  const k = Math.min(0.25, Math.abs(dy)/Math.abs(dx||1) * 0.12 + 0.12);
+  const sign = (dx >= 0 ? 1 : -1);
+  return `M ${p1.x} ${p1.y} Q ${cx} ${cy - sign*0}, ${p2.x} ${p2.y}`;
+}
+function render(){
+  /* 组 */
+  for (const g of GROUPS){
+    const grp = el('g', {class:'group', id:'grp-'+g.id});
+    grp.appendChild(el('rect', {x:g.x, y:g.y, width:g.w, height:g.h, rx:12, class:'group-box ' + g.cls}));
+    const t = el('text', {x:g.x+14, y:g.y+26, class:'group-title'});
+    t.textContent = g.title; grp.appendChild(t);
+    svg.appendChild(grp);
+  }
+  /* 边 */
+  for (let i=0; i<EDGES.length; i++){
+    const e = EDGES[i];
+    const path = el('path', {d: edgePath(byId[e.f], byId[e.t]), class:'edge '+e.k, id:'edge-'+i});
+    svg.appendChild(path);
+    if (e.lb){
+      const p1 = center(byId[e.f]), p2 = center(byId[e.t]);
+      const lb = el('text', {x:(p1.x+p2.x)/2, y:(p1.y+p2.y)/2 - 6, class:'edge-label', 'text-anchor':'middle', id:'elabel-'+i});
+      lb.textContent = e.lb; svg.appendChild(lb);
+    }
+  }
+  /* 节点 */
+  for (const n of NODES){
+    const grp = el('g', {class:'node', id:'node-'+n.id});
+    const multi = (n.s||'').includes('\n');
+    const h = multi ? n.h + 16 : n.h;
+    grp.appendChild(el('rect', {x:n.x, y:n.y, width:n.w, height:h, rx:8, class:'node-box ' + (n.cls||'')}));
+    const t = el('text', {x:n.x+n.w/2, y:n.y + (multi?18:19), class:'node-title', 'text-anchor':'middle'});
+    t.textContent = n.t; grp.appendChild(t);
+    const lines = (n.s||'').split('\n');
+    lines.forEach((ln, i) => {
+      const s = el('text', {x:n.x+n.w/2, y:n.y + (multi?34:36) + i*13, class:'node-sub', 'text-anchor':'middle'});
+      s.textContent = ln; grp.appendChild(s);
+    });
+    grp.addEventListener('click', ev => { ev.stopPropagation(); showPanel(n); });
+    svg.appendChild(grp);
+  }
+}
+render();
+
+/* ================= 面板 ================= */
+const panel = document.getElementById('panel');
+const panelBody = document.getElementById('panelBody');
+function showPanel(n){
+  const d = n.d || {};
+  panelBody.innerHTML =
+    `<h2>${n.t}</h2>` +
+    `<span class="tag">${d.tag||''}</span>` +
+    `<p>${d.role||''}</p>` +
+    (d.pts ? '<ul>' + d.pts.map(p=>`<li>${p}</li>`).join('') + '</ul>' : '') +
+    (d.docs ? `<div class="doc">📄 详见：${d.docs}</div>` : '');
+  panel.classList.add('open');
+}
+document.getElementById('panelClose').onclick = () => panel.classList.remove('open');
+svg.addEventListener('click', () => panel.classList.remove('open'));
+
+/* ================= 链路高亮 ================= */
+document.querySelectorAll('#toolbar button[data-flow]').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('#toolbar button').forEach(b => b.classList.remove('on'));
+    btn.classList.add('on');
+    const f = btn.dataset.flow;
+    svg.classList.toggle('flow-on', f !== 'all');
+    EDGES.forEach((e, i) => {
+      const lit = f !== 'all' && e.fl.includes(f);
+      document.getElementById('edge-'+i).classList.toggle('active', lit);
+      const lbEl = document.getElementById('elabel-'+i);
+      if (lbEl) lbEl.classList.toggle('active', lit);
+    });
+    NODES.forEach(n => {
+      const lit = f === 'all' || EDGES.some((e,i) => e.fl.includes(f) && (e.f===n.id || e.t===n.id));
+      document.getElementById('node-'+n.id).classList.toggle('lit', lit);
+    });
+    GROUPS.forEach(g => {
+      const lit = f === 'all' || NODES.some(n => n.g===g.id && EDGES.some(e => e.fl.includes(f) && (e.f===n.id || e.t===n.id)));
+      document.getElementById('grp-'+g.id).classList.toggle('lit', lit);
+    });
+  };
+});
+
+/* ================= 平移缩放 ================= */
+let vb = {x:0, y:0, w:1720, h:1000};
+const apply = () => svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+document.getElementById('resetView').onclick = () => { vb = {x:0,y:0,w:1720,h:1000}; apply(); };
+svg.addEventListener('wheel', ev => {
+  ev.preventDefault();
+  const k = ev.deltaY > 0 ? 1.12 : 0.89;
+  const r = svg.getBoundingClientRect();
+  const mx = vb.x + (ev.clientX - r.left)/r.width * vb.w;
+  const my = vb.y + (ev.clientY - r.top)/r.height * vb.h;
+  const nw = Math.min(4000, Math.max(500, vb.w * k));
+  const nh = nw * vb.h / vb.w;
+  vb.x = mx - (mx - vb.x) * nw/vb.w;
+  vb.y = my - (my - vb.y) * nh/vb.h;
+  vb.w = nw; vb.h = nh; apply();
+}, {passive:false});
+let drag = null;
+svg.addEventListener('mousedown', ev => { drag = {x:ev.clientX, y:ev.clientY, vx:vb.x, vy:vb.y}; svg.classList.add('dragging'); });
+window.addEventListener('mousemove', ev => {
+  if (!drag) return;
+  const r = svg.getBoundingClientRect();
+  vb.x = drag.vx - (ev.clientX - drag.x)/r.width * vb.w;
+  vb.y = drag.vy - (ev.clientY - drag.y)/r.height * vb.h;
+  apply();
+});
+window.addEventListener('mouseup', () => { drag = null; svg.classList.remove('dragging'); });
+</script>
+</body>
+</html>

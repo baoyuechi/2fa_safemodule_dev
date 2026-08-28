@@ -1,0 +1,8 @@
+# 第三方参考站源码（上游: github.com/ISA-Spectrum/isaspectrum），本地只读分析用，不入库
+/reference/
+
+.DS_Store
+.env
+.env.*
+node_modules/
+supabase/.temp/
