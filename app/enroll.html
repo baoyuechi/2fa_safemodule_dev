@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>绑定指纹 · isaSpectrum</title>
+  <!--
+    WebAuthn 浏览器侧 UMD 包（self-host @simplewebauthn/browser@13.3.0）。
+    生产部署改 unpkg CDN + SRI（tech 清单 §1.1），见 app/README.md。
+  -->
+  <script src="./js/vendor/simplewebauthn.browser.umd.min.js"></script>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">isaSpectrum · MFA 模块</span>
+    <div id="session-bar" class="session-bar" hidden>
+      <span>当前用户：<strong id="session-email"></strong></span>
+      <button id="btn-logout" class="btn-ghost">退出</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 绑定引导卡片 -->
+    <section class="card" id="bind-card" hidden>
+      <h1>绑定通行密钥</h1>
+      <p class="sub" id="bind-sub">用 Touch ID / Windows Hello 给账号加一把只有你能开的锁</p>
+
+      <div class="state-line" id="bind-state-line"></div>
+
+      <button id="btn-bind" class="btn btn-fido">🔐 立即绑定（约 30 秒）</button>
+      <div class="bind-status" id="bind-status"></div>
+
+      <p class="hint">
+        · 绑定过程需要验证指纹或设备密码（服务端强制 UV 位，G1）<br>
+        · 同一台设备重复绑定会被自动拒绝；换新手机后再来绑第二把即可（FR-6.2 多凭据）
+      </p>
+      <p class="foot">暂不绑定？<a href="login.html">先去登录</a>（发言门槛对未绑定账号生效，FR-8）</p>
+    </section>
+
+    <!-- 绑定成功面板 -->
+    <section class="card session-panel" id="done-card" hidden>
+      <div class="success-icon">✅</div>
+      <h2>绑定成功</h2>
+      <p class="sub" id="done-sub">通行密钥已与你的账号关联，发言门槛已解除</p>
+      <div class="cred-id" id="cred-id" title="credential ID"></div>
+      <div class="actions">
+        <button id="btn-bind-another" class="btn btn-primary">再绑一台设备</button>
+        <a class="btn btn-outline" href="login.html">去登录</a>
+      </div>
+      <p class="hint">建议至少绑定两台设备（FR-6.2）：单设备凭据不抗设备丢失</p>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      toast, handleError,
+      getSession, clearSession, fetchSessionUser, signOut,
+      startPasskeyRegistration, submitPasskeyRegistration, getEnrollment,
+    } from './js/mfa-client.js?v=3';
+
+    const $ = (id) => document.getElementById(id);
+
+    // 会话守卫：未登录 → 回登录页
+    const session = getSession();
+    if (!session?.access_token) {
+      location.replace('login.html');
+      throw new Error('redirecting');
+    }
+
+    let user;
+    try {
+      user = await fetchSessionUser(session.access_token); // 会话失效 → 回登录页
+    } catch {
+      clearSession();
+      location.replace('login.html');
+      throw new Error('redirecting');
+    }
+
+    $('session-email').textContent = user.email;
+    $('session-bar').hidden = false;
+    $('bind-card').hidden = false;
+
+    async function refreshEnrollState() {
+      const enrolled = await getEnrollment(session.access_token);
+      $('bind-state-line').textContent = enrolled
+        ? '✅ 当前账号已绑定过通行密钥，可以再绑一台设备（推荐）'
+        : '尚未绑定。完成后即可参与发言（FR-8 门槛解除）';
+      return enrolled;
+    }
+
+    // 绑定仪式：register-options → 浏览器弹指纹 → register-verify → 入库 + enabled=true
+    $('btn-bind').addEventListener('click', async () => {
+      const btn = $('btn-bind');
+      btn.disabled = true;
+      $('bind-status').textContent = '等待指纹验证…（若浏览器无响应请确认 Touch ID 已录入）';
+      try {
+        const { attestation } = await startPasskeyRegistration(session.access_token, 'enroll');
+        $('bind-status').textContent = '指纹采集完成，服务端验证中…';
+        const { credentialId } = await submitPasskeyRegistration(session.access_token, attestation);
+        // 成功：切成功面板（服务端已置 mfa_enrollments.enabled=true）
+        $('cred-id').textContent = `credential ID: ${credentialId}`;
+        $('done-sub').textContent = `通行密钥已与 ${user.email} 关联，发言门槛已解除`;
+        $('bind-card').hidden = true;
+        $('done-card').hidden = false;
+        toast('绑定成功', 'success');
+      } catch (e) {
+        handleError(e); // 用户取消静默；CREDENTIAL_EXISTS/UV_REQUIRED 等按字典提示
+        $('bind-status').textContent = '';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // 再绑一台设备：回到引导卡（服务端 excludeCredentials 会排除已绑认证器）
+    $('btn-bind-another').addEventListener('click', async () => {
+      $('done-card').hidden = true;
+      $('bind-card').hidden = false;
+      await refreshEnrollState();
+    });
+
+    $('btn-logout').addEventListener('click', async () => {
+      try {
+        await signOut(session.access_token);
+      } catch { /* 照常清本地 */ } finally {
+        clearSession();
+        location.href = 'login.html';
+      }
+    });
+
+    await refreshEnrollState();
+  </script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>注册 · isaSpectrum</title>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">isaSpectrum · MFA 模块</span>
+  </header>
+
+  <main>
+    <section class="card card-wide" id="register-card">
+      <h1>注册新账号</h1>
+      <p class="sub">仅限学校邮箱；注册后将引导你完成指纹绑定（约 30 秒）</p>
+
+      <form id="form-register" autocomplete="on">
+        <label for="email">学校邮箱</label>
+        <input id="email" name="email" type="email" required placeholder="you@isawuhan.com" autocomplete="email">
+        <p class="field-tip">FR-1.2：提交前会经服务端校验邮箱域名白名单</p>
+
+        <label for="password">设置密码</label>
+        <input id="password" name="password" type="password" required minlength="6" placeholder="至少 6 位" autocomplete="new-password">
+
+        <label for="password2">确认密码</label>
+        <input id="password2" name="password2" type="password" required minlength="6" placeholder="再次输入密码" autocomplete="new-password">
+
+        <button type="submit" class="btn" id="btn-submit">注册并继续</button>
+      </form>
+
+      <!-- 手机号绑定：预留接口（FR-2）。发送/验证走真实模拟端点，暂不阻塞注册流程；
+           正式接入需端点 4 phone/bind（持 otpToken 完成绑定写库）。 -->
+      <details class="phone-box" id="phone-box">
+        <summary>手机号绑定（预留功能 · 选填，不影响注册）</summary>
+        <form id="form-phone" autocomplete="off">
+          <label for="phone">手机号</label>
+          <input id="phone" name="phone" type="tel" placeholder="13x xxxx xxxx" maxlength="13">
+          <div class="otp-row">
+            <input id="otp-code" inputmode="numeric" placeholder="6 位验证码" maxlength="6">
+            <button type="button" class="btn btn-outline btn-inline" id="btn-send-otp">发送验证码</button>
+          </div>
+          <div class="otp-row">
+            <span></span>
+            <button type="button" class="btn btn-outline btn-inline" id="btn-verify-otp">验证</button>
+          </div>
+          <p class="box-tip">当前为模拟短信：验证码打印在 edge 日志（docker logs supabase_edge_runtime_2fa_safemodule_dev | grep '\[OTP\]'）。同一手机号 24h 内限 5 条。</p>
+        </form>
+      </details>
+
+      <p class="foot">已有账号？<a href="login.html">直接登录</a></p>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      toast, handleError,
+      checkEmailDomain, signUp, saveSession, sendOtp, verifyOtp,
+    } from './js/mfa-client.js';
+
+    const $ = (id) => document.getElementById(id);
+
+    // 注册：域名预检（fail-closed）→ GoTrue 注册 → 自动会话 → 跳转绑定引导
+    $('form-register').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const email = $('email').value.trim().toLowerCase();
+      const password = $('password').value;
+      if (password.length < 6) return toast('密码至少 6 位', 'error');
+      if (password !== $('password2').value) return toast('两次输入的密码不一致', 'error');
+
+      const btn = $('btn-submit');
+      btn.disabled = true;
+      try {
+        await checkEmailDomain({ email }); // DOMAIN_NOT_ALLOWED → 字典文案"请使用学校邮箱注册"
+        saveSession(await signUp(email, password));
+        toast('注册成功，正在前往指纹绑定…', 'success');
+        setTimeout(() => { location.href = 'enroll.html'; }, 600);
+      } catch (e) {
+        handleError(e);
+        btn.disabled = false;
+      }
+    });
+
+    // ---- 以下为手机验证预留接口（端点 2/3 已通，端点 4 phone/bind 待接入）----
+
+    let otpTimer = null;
+    $('btn-send-otp').addEventListener('click', async () => {
+      const phone = $('phone').value.replace(/[\s-]/g, '');
+      if (!/^1[3-9]\d{9}$/.test(phone)) return toast('请输入正确的手机号', 'error');
+      const btn = $('btn-send-otp');
+      btn.disabled = true;
+      try {
+        await sendOtp(phone);
+        toast('验证码已发送（模拟短信，见页面提示查看日志）', 'success');
+        let left = 60;
+        btn.textContent = `${left}s 后重发`;
+        otpTimer = setInterval(() => {
+          left -= 1;
+          if (left <= 0) {
+            clearInterval(otpTimer);
+            btn.textContent = '发送验证码';
+            btn.disabled = false;
+          } else {
+            btn.textContent = `${left}s 后重发`;
+          }
+        }, 1000);
+      } catch (e) {
+        handleError(e); // PHONE_TAKEN / RATE_LIMITED 字典文案
+        btn.disabled = false;
+      }
+    });
+
+    $('btn-verify-otp').addEventListener('click', async () => {
+      const phone = $('phone').value.replace(/[\s-]/g, '');
+      const code = $('otp-code').value.trim();
+      if (!/^\d{6}$/.test(code)) return toast('请输入 6 位验证码', 'error');
+      try {
+        await verifyOtp(phone, code);
+        toast('验证成功（绑定接口 phone/bind 待接入，一次性票据已预留）', 'success');
+      } catch (e) {
+        handleError(e); // OTP_EXPIRED（含码错误，防枚举统一文案）
+      }
+    });
+  </script>
+</body>
+</html>

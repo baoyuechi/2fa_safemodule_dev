@@ -1,0 +1,92 @@
+/* ============================================================================
+   MFA 模块 · 共享样式（login / register / enroll 三页共用）
+   纯 CSS，无框架；[hidden] 防御规则必须有——组件 display 规则会覆盖其 UA 样式
+   ========================================================================== */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+[hidden] { display: none !important; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  background: #f0f2f5; color: #1f2937; min-height: 100vh; display: flex; flex-direction: column;
+}
+
+/* ---- 顶栏 ---- */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 24px; background: #fff; border-bottom: 1px solid #e5e7eb;
+}
+.brand { font-weight: 700; color: #1a3c6e; }
+.session-bar { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+.badge { background: #fef3c7; color: #92400e; border-radius: 999px; padding: 2px 10px; font-size: 12px; }
+.badge-ok { background: #d1fae5; color: #065f46; }
+
+/* ---- 主体卡片 ---- */
+main { flex: 1; display: flex; align-items: center; justify-content: center; padding: 32px 16px; }
+.card {
+  width: 100%; max-width: 400px; background: #fff; border-radius: 14px;
+  padding: 32px 28px; box-shadow: 0 8px 30px rgba(0,0,0,.08);
+}
+.card-wide { max-width: 460px; }
+h1 { font-size: 22px; margin-bottom: 4px; }
+.sub { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
+
+/* ---- 按钮 ---- */
+.btn {
+  display: inline-block; width: 100%; padding: 12px 16px; border: none; border-radius: 10px;
+  font-size: 15px; cursor: pointer; transition: filter .15s ease, opacity .15s ease; text-align: center;
+}
+.btn:hover { filter: brightness(1.08); }
+.btn:disabled { opacity: .6; cursor: not-allowed; }
+.btn-primary { background: #1a3c6e; color: #fff; }
+.btn-fido { background: #14532d; color: #fff; }
+.btn-outline { background: #fff; color: #1a3c6e; border: 1px solid #1a3c6e; text-decoration: none; }
+.btn-ghost {
+  width: auto; background: transparent; color: #6b7280; border: 1px solid #d1d5db;
+  padding: 6px 14px; border-radius: 8px; font-size: 13px;
+}
+.btn-ghost:hover { color: #1f2937; border-color: #9ca3af; filter: none; }
+.btn-inline { width: auto; padding: 10px 14px; font-size: 13.5px; white-space: nowrap; }
+
+/* ---- 表单 ---- */
+form label { display: block; font-size: 13px; color: #4b5563; margin: 12px 0 4px; }
+form input {
+  width: 100%; padding: 11px 12px; border: 1px solid #d1d5db; border-radius: 10px;
+  font-size: 15px; outline: none; transition: border-color .15s ease;
+}
+form input:focus { border-color: #1a3c6e; }
+form .btn { margin-top: 18px; background: #1a3c6e; color: #fff; }
+.field-tip { color: #9ca3af; font-size: 12px; margin-top: 4px; }
+
+/* ---- 验证码行（手机预留区块）---- */
+.otp-row { display: flex; gap: 8px; margin-top: 8px; }
+.otp-row input { flex: 1; letter-spacing: 4px; }
+.otp-row .btn { width: auto; margin-top: 0; flex-shrink: 0; }
+
+/* ---- 预留功能折叠块 ---- */
+details.phone-box { border: 1px dashed #d1d5db; border-radius: 10px; padding: 12px 14px; margin-top: 22px; }
+details.phone-box summary { cursor: pointer; font-size: 13.5px; color: #6b7280; user-select: none; }
+details.phone-box .box-tip { color: #9ca3af; font-size: 12px; margin: 8px 0 0; }
+
+/* ---- 提示与脚注 ---- */
+.divider { display: flex; align-items: center; gap: 12px; color: #9ca3af; font-size: 12px; margin: 20px 0; }
+.divider::before, .divider::after { content: ""; flex: 1; height: 1px; background: #e5e7eb; }
+.hint { color: #6b7280; font-size: 12.5px; margin-top: 10px; text-align: center; }
+.foot { margin-top: 22px; text-align: center; font-size: 13.5px; color: #6b7280; }
+.foot a { color: #1a3c6e; }
+
+/* ---- 会话面板（登录成功态）---- */
+.session-panel { text-align: center; }
+.session-panel .avatar { width: 56px; height: 56px; border-radius: 50%; background: #e5edf7; color: #1a3c6e; font-size: 24px; line-height: 56px; margin: 0 auto 12px; }
+.session-panel h2 { font-size: 18px; margin-bottom: 6px; word-break: break-all; }
+.session-panel .actions { display: flex; gap: 10px; justify-content: center; margin-top: 20px; flex-wrap: wrap; }
+.session-panel .actions .btn { width: auto; padding: 10px 18px; text-decoration: none; font-size: 14px; }
+
+/* ---- 绑定页 ---- */
+.state-line { font-size: 14px; color: #374151; margin-bottom: 8px; }
+.bind-status { min-height: 20px; font-size: 13px; color: #6b7280; text-align: center; margin-top: 10px; }
+.cred-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+  background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 8px;
+  padding: 8px 10px; margin-top: 10px; word-break: break-all; color: #374151;
+}
+.success-icon { width: 56px; height: 56px; border-radius: 50%; background: #d1fae5; color: #065f46; font-size: 26px; line-height: 56px; margin: 0 auto 12px; text-align: center; }

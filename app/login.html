@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 · isaSpectrum</title>
+  <!--
+    WebAuthn 浏览器侧 UMD 包（self-host @simplewebauthn/browser@13.3.0，与 server ^13 配对）。
+    生产部署改 unpkg CDN + SRI 固定版本（tech 清单 §1.1），见 app/README.md。
+  -->
+  <script src="./js/vendor/simplewebauthn.browser.umd.min.js"></script>
+  <link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <span class="brand">isaSpectrum · MFA 模块</span>
+    <div id="session-bar" class="session-bar" hidden>
+      <span>当前用户：<strong id="session-email"></strong></span>
+      <span id="enroll-badge" class="badge" hidden>未绑定通行密钥</span>
+      <span id="enroll-badge-ok" class="badge badge-ok" hidden>已绑定通行密钥</span>
+      <button id="btn-logout" class="btn-ghost">退出</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- 未登录：登录卡片 -->
+    <section class="card" id="login-card" hidden>
+      <h1>登录</h1>
+      <p class="sub">使用你的学校邮箱账号继续</p>
+
+      <!-- 方式一：通行密钥（推荐·指纹底线） -->
+      <button id="btn-passkey" class="btn btn-fido">🔐 使用通行密钥登录</button>
+      <p class="hint">推荐：Touch ID / Windows Hello 一触即达，无需输入密码</p>
+
+      <div class="divider"><span>或使用邮箱密码</span></div>
+
+      <!-- 方式二：邮箱密码。
+           autocomplete="username webauthn"：同一输入框承接 Conditional UI
+           （webauthn 必须排在最后，tech 清单 §1.4）。页面加载后自动发起
+           conditional 仪式——输入框聚焦时浏览器直接弹出本机通行证。 -->
+      <form id="form-password" autocomplete="on">
+        <label for="email">学校邮箱</label>
+        <input id="email" name="email" type="email" required placeholder="you@isawuhan.com" autocomplete="username webauthn">
+        <label for="password">密码</label>
+        <input id="password" name="password" type="password" required autocomplete="current-password">
+        <button type="submit" class="btn" id="btn-password">邮箱密码登录</button>
+      </form>
+
+      <p class="foot">没有账号？<a href="register.html">注册新账号</a></p>
+    </section>
+
+    <!-- 已登录：会话面板（要求 4d：顶部显示当前用户 + 退出） -->
+    <section class="card session-panel" id="session-panel" hidden>
+      <div class="avatar">👤</div>
+      <h2 id="panel-email"></h2>
+      <p class="sub" id="panel-enroll-hint"></p>
+      <div class="actions">
+        <a id="link-enroll" class="btn btn-primary" href="enroll.html">去绑定指纹</a>
+        <button id="btn-logout-panel" class="btn btn-outline">退出</button>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import {
+      toast, handleError,
+      signInWithPassword, signOut, getSession, saveSession, clearSession, fetchSessionUser,
+      loginOptions, loginVerify, exchangeTokenHash,
+      startPasskeyAuthentication, browserSupportsWebAuthn, browserSupportsWebAuthnAutofill,
+      getEnrollment,
+    } from './js/mfa-client.js?v=3';
+
+    const $ = (id) => document.getElementById(id);
+
+    function showLoggedOut() {
+      $('session-bar').hidden = true;
+      $('login-card').hidden = false;
+      $('session-panel').hidden = true;
+    }
+
+    async function showLoggedIn() {
+      const session = getSession();
+      if (!session?.access_token) return showLoggedOut();
+      let user;
+      try {
+        user = await fetchSessionUser(session.access_token); // 失效会话在此抛出
+      } catch {
+        clearSession();
+        return showLoggedOut();
+      }
+      // 顶部会话条（要求 4d）
+      $('session-email').textContent = user.email;
+      $('session-bar').hidden = false;
+      $('login-card').hidden = true;
+      // 会话面板 + 绑定状态引导（FR-4.1：绑定入口先开放、门槛后生效）
+      $('panel-email').textContent = user.email;
+      const enrolled = await getEnrollment(session.access_token);
+      $('enroll-badge').hidden = enrolled;
+      $('enroll-badge-ok').hidden = !enrolled;
+      $('link-enroll').hidden = enrolled;
+      $('panel-enroll-hint').textContent = enrolled
+        ? '通行密钥已绑定，发言门槛对你已解除。'
+        : '完成指纹绑定后即可参与发言（约 30 秒）。';
+      $('session-panel').hidden = false;
+    }
+
+    /** 通行密钥登录共用终点：assertion → login-verify → token_hash → 会话 */
+    async function finishPasskeyLogin(assertion, email) {
+      const { token_hash } = await loginVerify({ ...(email ? { email } : {}), response: assertion });
+      saveSession(await exchangeTokenHash(token_hash));
+      toast('登录成功', 'success');
+      await showLoggedIn();
+    }
+
+    // 方式一：按钮触发通行密钥仪式（填了邮箱则限定 allowCredentials，留空走 discovery）
+    $('btn-passkey').addEventListener('click', async () => {
+      const email = $('email').value.trim().toLowerCase() || null;
+      const btn = $('btn-passkey');
+      btn.disabled = true;
+      try {
+        const { optionsJSON } = await loginOptions(email ? { email } : {}); // 信封拆包：取 optionsJSON
+        const assertion = await startPasskeyAuthentication(optionsJSON);
+        await finishPasskeyLogin(assertion, email);
+      } catch (e) {
+        handleError(e);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // 方式二：邮箱密码登录
+    $('form-password').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const btn = $('btn-password');
+      btn.disabled = true;
+      try {
+        saveSession(await signInWithPassword($('email').value.trim().toLowerCase(), $('password').value));
+        toast('登录成功', 'success');
+        await showLoggedIn();
+      } catch (e) {
+        handleError(e);
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // 退出（两处按钮共用）
+    async function doLogout() {
+      const session = getSession();
+      try {
+        if (session?.access_token) await signOut(session.access_token);
+      } catch { /* 登出失败也照常清本地 */ } finally {
+        clearSession();
+        showLoggedOut();
+        toast('已退出登录', 'info');
+      }
+    }
+    $('btn-logout').addEventListener('click', doLogout);
+    $('btn-logout-panel').addEventListener('click', doLogout);
+
+    // Conditional UI 早期尝试（Part 2 §4 常态体验）：能力探测通过即挂起一个
+    // conditional 仪式，用户点邮箱输入框时浏览器直接弹出本机通行证。
+    // 【机会型体验铁律】任何失败（浏览器不支持/能力探测异常/仪式被顶掉/输入框
+    // 未就绪等）一律静默——只进 console，绝不 Toast 打扰用户；按钮路径才给提示。
+    async function initConditionalUI() {
+      if (!browserSupportsWebAuthn() || !(await browserSupportsWebAuthnAutofill())) return;
+      try {
+        const { optionsJSON } = await loginOptions({}); // 信封拆包：取 optionsJSON（discovery 空 allowCredentials）
+        const assertion = await startPasskeyAuthentication(optionsJSON, { useBrowserAutofill: true });
+        await finishPasskeyLogin(assertion, null); // 无 email → 服务端按 userHandle 定位账户
+      } catch (e) {
+        window.__mfaCondErr = { name: e?.name, message: e?.message, code: e?.code, raw: e?.raw, stack: e?.stack }; // 诊断留痕
+        console.warn('[mfa] Conditional UI 不可用（已静默降级为按钮登录）:', e?.name, e?.message);
+      }
+    }
+
+    showLoggedIn();
+    initConditionalUI();
+  </script>
+</body>
+</html>
