@@ -26,7 +26,7 @@ interface AuthShellProps {
 export default function AuthShell({ title, subtitle, leftExtra, children }: AuthShellProps) {
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
-      <Box sx={{ alignSelf: 'flex-end', p: 2 }}>
+      <Box sx={{ alignSelf: 'flex-end', px: { xs: 2, sm: 3 }, py: 1.5 }}>
         <ColorModeIconDropdown />
       </Box>
 
@@ -72,7 +72,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children }: Auth
           alignItems: 'center',
           flexWrap: 'wrap',
           gap: 1,
-          px: { xs: 3, sm: 6 },
+          px: { xs: 2, sm: 3 },
           pb: 3,
         }}
       >

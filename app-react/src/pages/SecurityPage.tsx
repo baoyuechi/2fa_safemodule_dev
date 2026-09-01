@@ -15,6 +15,7 @@ import SmsRoundedIcon from '@mui/icons-material/SmsRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
+import PageLoader from '../components/PageLoader';
 import {
   clearSession,
   fetchSessionUser,
@@ -63,7 +64,7 @@ export default function SecurityPage() {
     }
   }
 
-  if (!user) return null; // 守卫跳转中
+  if (!user) return <PageLoader />; // 守卫跳转中：统一加载占位，避免白屏闪现
 
   return (
     <AccountShell active="security" user={user} onLogout={doLogout}>

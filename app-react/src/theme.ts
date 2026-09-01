@@ -5,6 +5,11 @@ import { createTheme } from '@mui/material/styles';
 const BRAND = '#1a3c6e';
 const FIDO_GREEN = '#1e8449';
 
+// 圆角三档：卡片 28，控件 12，药丸 999
+const RADIUS_CARD = 28;
+const RADIUS_CONTROL = 12;
+const RADIUS_PILL = 999;
+
 const theme = createTheme({
   cssVariables: { colorSchemeSelector: 'class' },
   colorSchemes: {
@@ -24,7 +29,7 @@ const theme = createTheme({
       },
     },
   },
-  shape: { borderRadius: 12 },
+  shape: { borderRadius: RADIUS_CONTROL },
   typography: {
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif',
@@ -37,7 +42,7 @@ const theme = createTheme({
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { borderRadius: 999, paddingInline: 24, fontWeight: 500 },
+        root: { borderRadius: RADIUS_PILL, paddingInline: 24, fontWeight: 500 },
         sizeLarge: { paddingBlock: 10 },
       },
     },
@@ -47,17 +52,43 @@ const theme = createTheme({
     },
     MuiCard: {
       styleOverrides: {
-        root: { borderRadius: 28, boxShadow: 'none', backgroundImage: 'none' },
+        root: {
+          borderRadius: RADIUS_CARD,
+          boxShadow: 'none',
+          backgroundImage: 'none',
+          overflow: 'hidden',
+        },
       },
     },
     MuiTextField: {
       defaultProps: { variant: 'outlined', fullWidth: true },
     },
     MuiChip: {
-      styleOverrides: { root: { borderRadius: 999 } },
+      styleOverrides: { root: { borderRadius: RADIUS_PILL } },
     },
     MuiAlert: {
-      styleOverrides: { root: { borderRadius: 999 } },
+      // Google 顶部提示条风格：横幅式，圆角适中（非药丸）
+      styleOverrides: { root: { borderRadius: 12 } },
+    },
+    MuiAccordion: {
+      styleOverrides: {
+        root: {
+          borderRadius: 12,
+          border: '1px solid',
+          borderColor: 'divider',
+          '&:before': { display: 'none' },
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: ({ theme }) => ({
+          borderRadius: 0,
+          '&:hover': {
+            backgroundColor: theme.vars.palette.action.hover,
+          },
+        }),
+      },
     },
   },
 });

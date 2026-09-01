@@ -50,6 +50,11 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [busyPasskey, setBusyPasskey] = React.useState(false);
   const [busyPassword, setBusyPassword] = React.useState(false);
+  // WebAuthn 能力探测：不支持时隐藏「使用您的通行密钥」入口
+  const [passkeySupported, setPasskeySupported] = React.useState(true);
+  React.useEffect(() => {
+    setPasskeySupported(browserSupportsWebAuthnSafe());
+  }, []);
 
   // 已有有效会话 → 直接进安全中心
   React.useEffect(() => {
@@ -193,21 +198,27 @@ export default function LoginPage() {
               <LockRoundedIcon sx={{ mr: 2.5, color: 'primary.main' }} />
               <Typography>输入您的密码</Typography>
             </ListItemButton>
-            <Divider component="li" />
-            <ListItemButton onClick={handlePasskey} disabled={busyPasskey} sx={{ py: 2, px: 2.5, borderRadius: 0 }}>
-              <FingerprintRoundedIcon sx={{ mr: 2.5, color: 'primary.main' }} />
-              <Typography>{busyPasskey ? '等待指纹验证…' : '使用您的通行密钥'}</Typography>
-            </ListItemButton>
+            {passkeySupported && (
+              <>
+                <Divider component="li" />
+                <ListItemButton onClick={handlePasskey} disabled={busyPasskey} sx={{ py: 2, px: 2.5, borderRadius: 0 }}>
+                  <FingerprintRoundedIcon sx={{ mr: 2.5, color: 'primary.main' }} />
+                  <Typography>{busyPasskey ? '等待指纹验证…' : '使用您的通行密钥'}</Typography>
+                </ListItemButton>
+              </>
+            )}
           </Card>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            推荐：Touch ID / Windows Hello 一触即达，无需输入密码
-          </Typography>
+          {passkeySupported && (
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              推荐：Touch ID / Windows Hello 一触即达，无需输入密码
+            </Typography>
+          )}
         </>
       )}
 
       {step === 'password' && (
         <>
-          <Alert severity="info" icon={<FingerprintRoundedIcon fontSize="inherit" />} sx={{ borderRadius: 3 }}>
+          <Alert severity="info" icon={<FingerprintRoundedIcon fontSize="inherit" />}>
             不妨选择「使用您的通行密钥」，更轻松更安全地登录
           </Alert>
           <Typography>如需继续操作，请先验证您的身份</Typography>

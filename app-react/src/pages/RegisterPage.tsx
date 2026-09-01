@@ -14,6 +14,7 @@ import EmailPill from '../components/EmailPill';
 import { checkEmailDomain, handleError, saveSession, sendOtp, signUp, toast, verifyOtp } from '../api/mfaClient';
 
 const PHONE_RE = /^1[3-9]\d{9}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** 注册页：宽版双栏卡 + Google 式「下一步」主操作；手机号绑定保留为预留折叠区。 */
 export default function RegisterPage() {
@@ -29,15 +30,22 @@ export default function RegisterPage() {
   const [countdown, setCountdown] = React.useState(0);
   const [verifying, setVerifying] = React.useState(false);
 
+  // 注册成功后的跳转延迟：存 ref 以便卸载时清理，避免组件卸载后仍触发 navigate
+  const navigateTimer = React.useRef<number | undefined>(undefined);
+  React.useEffect(() => () => {
+    if (navigateTimer.current !== undefined) clearTimeout(navigateTimer.current);
+  }, []);
+
   React.useEffect(() => {
     if (countdown <= 0) return;
     const t = setInterval(() => setCountdown((n) => n - 1), 1000);
     return () => clearInterval(t);
   }, [countdown]);
 
-  // 注册：域名预检（fail-closed）→ GoTrue 注册 → 自动会话 → 跳转绑定引导
+  // 注册：邮箱格式 → 域名预检（fail-closed）→ GoTrue 注册 → 自动会话 → 跳转绑定引导
   async function handleRegister() {
     const mail = email.trim().toLowerCase();
+    if (!EMAIL_RE.test(mail)) return toast('请输入有效的邮箱地址', 'error');
     if (password.length < 6) return toast('密码至少 6 位', 'error');
     if (password !== password2) return toast('两次输入的密码不一致', 'error');
     setBusy(true);
@@ -45,7 +53,7 @@ export default function RegisterPage() {
       await checkEmailDomain({ email: mail }); // DOMAIN_NOT_ALLOWED → 字典文案"请使用学校邮箱注册"
       saveSession(await signUp(mail, password));
       toast('注册成功，正在前往指纹绑定…', 'success');
-      setTimeout(() => navigate('/enroll', { replace: true }), 600);
+      navigateTimer.current = window.setTimeout(() => navigate('/enroll', { replace: true }), 600);
     } catch (e) {
       handleError(e);
       setBusy(false);
@@ -145,9 +153,7 @@ export default function RegisterPage() {
         sx={{
           border: '1px dashed',
           borderColor: 'divider',
-          borderRadius: '12px !important',
           bgcolor: 'transparent',
-          '&:before': { display: 'none' },
         }}
       >
         <AccordionSummary expandIcon={<ExpandMoreRoundedIcon />}>

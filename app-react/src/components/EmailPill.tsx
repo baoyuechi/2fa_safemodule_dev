@@ -15,6 +15,7 @@ export default function EmailPill({ email, items }: { email: string; items?: Ema
   const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
 
   if (!items?.length) {
+    // 非交互变体（纯展示）：不画下拉箭头，避免暗示可点击
     return (
       <Box
         sx={{
@@ -34,7 +35,6 @@ export default function EmailPill({ email, items }: { email: string; items?: Ema
         <Box component="span" sx={{ fontSize: 14, overflowWrap: 'anywhere' }}>
           {email}
         </Box>
-        <ArrowDropDownRoundedIcon fontSize="small" sx={{ color: 'text.secondary' }} />
       </Box>
     );
   }
@@ -55,6 +55,7 @@ export default function EmailPill({ email, items }: { email: string; items?: Ema
           maxWidth: '100%',
           alignSelf: 'flex-start',
           '& .MuiButton-endIcon': { mr: 0 },
+          '&:hover': { borderColor: 'divider', backgroundColor: 'action.hover' },
         }}
       >
         <Box component="span" sx={{ fontSize: 14, overflowWrap: 'anywhere' }}>

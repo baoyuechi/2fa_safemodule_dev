@@ -11,6 +11,7 @@ import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { useNavigate } from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
+import PageLoader from '../components/PageLoader';
 import {
   clearSession,
   fetchSessionUser,
@@ -86,7 +87,7 @@ export default function EnrollPage() {
     }
   }
 
-  if (!user) return null; // 守卫跳转中
+  if (!user) return <PageLoader />; // 守卫跳转中：统一加载占位，避免白屏闪现
 
   return (
     <AccountShell active="passkeys" user={user} onLogout={doLogout}>
