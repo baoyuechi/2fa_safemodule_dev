@@ -175,12 +175,12 @@ export default function EnrollPage() {
               </Button>
             </Stack>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              建议至少绑定两台设备（FR-6.2）：单设备凭据不抗设备丢失。同一台设备重复绑定会被自动拒绝。
+              建议至少绑定两台设备，以防设备丢失后无法登录。同一台设备重复绑定会被自动拒绝。
             </Typography>
           </Stack>
         ) : (
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            尚未创建通行密钥。点击上方「创建通行密钥」完成绑定（约 30 秒），即可参与发言（FR-8 门槛解除）。
+            尚未创建通行密钥。点击上方「创建通行密钥」完成绑定（约 30 秒），即可参与发言。
           </Typography>
         )}
       </Card>

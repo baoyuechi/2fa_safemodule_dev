@@ -38,25 +38,49 @@ const theme = createTheme({
     button: { textTransform: 'none' },
   },
   components: {
-    // Google 账号页风格：药丸按钮 + 大圆角输入框 + 描边大圆角卡片（无重投影）
+    // Google 账号页风格：药丸按钮 + 描边输入框 + 大圆角卡片；卡片带轻量层叠阴影
     MuiButton: {
       defaultProps: { disableElevation: true },
       styleOverrides: {
-        root: { borderRadius: RADIUS_PILL, paddingInline: 24, fontWeight: 500 },
+        root: {
+          borderRadius: RADIUS_PILL,
+          paddingInline: 24,
+          fontWeight: 500,
+          transition:
+            'background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .25s ease, transform .2s ease',
+          '&:active': { transform: 'translateY(0) scale(0.98)' },
+        },
         sizeLarge: { paddingBlock: 10 },
+        // 主操作：悬浮轻抬 + 投影加深（质感层），按下回落
+        contained: {
+          '&:hover': {
+            transform: 'translateY(-1px)',
+            boxShadow: '0 2px 4px rgba(26,60,110,.16), 0 8px 20px rgba(26,60,110,.20)',
+          },
+        },
+        outlined: {
+          '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 2px 8px rgba(60,64,67,.12)' },
+        },
       },
     },
     MuiOutlinedInput: {
-      // Google 式描边输入框：小圆角 + 缺口标签（notched outline）
-      styleOverrides: { root: { borderRadius: 8 } },
+      // Google 式描边输入框：小圆角 + 缺口标签（notched outline）+ 聚焦柔光
+      styleOverrides: {
+        root: {
+          borderRadius: 8,
+          transition: 'box-shadow .2s ease',
+          '&.Mui-focused': { boxShadow: '0 1px 6px rgba(26,60,110,.18)' },
+        },
+      },
     },
     MuiCard: {
       styleOverrides: {
         root: {
           borderRadius: RADIUS_CARD,
-          boxShadow: 'none',
           backgroundImage: 'none',
           overflow: 'hidden',
+          // 两层柔和阴影：贴地 1px 锐影 + 大范围慢衰减，形成悬浮层级（暗色下同样成立）
+          boxShadow: '0 1px 2px rgba(60,64,67,.12), 0 6px 24px rgba(60,64,67,.10)',
         },
       },
     },

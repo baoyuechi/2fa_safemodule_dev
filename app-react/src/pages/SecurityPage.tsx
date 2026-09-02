@@ -78,8 +78,8 @@ export default function SecurityPage() {
             <Typography variant="h2">{enrolled ? '让您的账号安全无虞' : '完成一步，让您的账号安全无虞'}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
               {enrolled
-                ? '通行密钥已绑定，发言门槛对你已解除。建议再绑定一台设备，防止单设备丢失。'
-                : '绑定通行密钥（约 30 秒）后即可参与发言；未绑定账号只能浏览（FR-8 门槛）。'}
+                ? '通行密钥已绑定，你现在可以参与发言。建议再绑定一台设备，以防设备丢失。'
+                : '绑定通行密钥（约 30 秒）后即可参与发言；未绑定的账号只能浏览。'}
             </Typography>
             {!enrolled && (
               <Button component={RouterLink} to="/enroll" variant="contained" size="small" sx={{ mt: 1.5, borderRadius: 999 }}>
@@ -107,7 +107,7 @@ export default function SecurityPage() {
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography>通行密钥</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {enrolled ? '已绑定，可用于免密码直登（Touch ID / Windows Hello）' : '尚未绑定。完成后即可参与发言（FR-8）'}
+              {enrolled ? '已绑定，可用于免密码直登（Touch ID / Windows Hello）' : '尚未绑定。完成后即可参与发言'}
             </Typography>
           </Box>
           <Chip
@@ -125,21 +125,21 @@ export default function SecurityPage() {
           <Box sx={{ flex: 1 }}>
             <Typography>邮箱密码</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              用于无指纹设备的兜底登录（第一因子，AAL1）
+              在没有指纹识别的设备上，可通过邮箱密码登录
             </Typography>
           </Box>
           <Chip label="已设置" size="small" variant="outlined" sx={{ mr: 1 }} />
         </ListItemButton>
         <Divider component="li" />
         <ListItemButton sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}>
-          <SmsRoundedIcon sx={{ mr: 2.5, color: 'text.disabled' }} />
+          <SmsRoundedIcon sx={{ mr: 2.5, color: 'success.main' }} />
           <Box sx={{ flex: 1 }}>
-            <Typography sx={{ color: 'text.disabled' }}>用于两步验证的手机号</Typography>
-            <Typography variant="body2" sx={{ color: 'text.disabled' }}>
-              预留功能：待端点 phone/bind 接入后开放
+            <Typography>手机号绑定</Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              注册时绑定，仅用于账号恢复与备用验证，不参与日常登录
             </Typography>
           </Box>
-          <Chip label="预留" size="small" variant="outlined" sx={{ mr: 1, color: 'text.disabled' }} />
+          <Chip label="注册时绑定" size="small" variant="outlined" sx={{ mr: 1 }} />
         </ListItemButton>
       </Card>
 

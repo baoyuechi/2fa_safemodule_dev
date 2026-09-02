@@ -20,7 +20,7 @@ import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
 import type { MfaUser } from '../api/mfaClient';
 
 interface AccountShellProps {
-  active: 'security' | 'passkeys';
+  active: 'security' | 'passkeys' | 'phone';
   user: MfaUser;
   onLogout: () => void;
   children: React.ReactNode;
@@ -40,7 +40,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { key: 'security', label: '安全性与登录', icon: <LockRoundedIcon sx={{ fontSize: 18 }} />, variant: 'primary', to: '/security' },
   { key: 'passkeys', label: '通行密钥', icon: <FingerprintRoundedIcon sx={{ fontSize: 18 }} />, variant: 'success', to: '/enroll' },
-  { key: 'phone', label: '手机号绑定', icon: <SmsRoundedIcon sx={{ fontSize: 18 }} />, variant: 'warning', disabled: true },
+  { key: 'phone', label: '手机号绑定', icon: <SmsRoundedIcon sx={{ fontSize: 18 }} />, variant: 'warning', to: '/phone' },
   { key: 'recovery', label: '恢复码', icon: <KeyRoundedIcon sx={{ fontSize: 18 }} />, variant: 'info', disabled: true },
 ];
 
@@ -60,7 +60,7 @@ const NAV_BG_DARK: Record<string, string> = {
 
 /**
  * 账户页共用壳（图 1 风格）：顶栏品牌 + 头像菜单；左侧彩色圆标导航；
- * 右侧主内容列。预留项（端点 4/9-12 未实现）禁用并标注「预留」。
+ * 右侧主内容列。预留项（只有恢复码，端点 9/10/12 未实现）禁用并标注「预留」。
  */
 export default function AccountShell({ active, user, onLogout, children }: AccountShellProps) {
   const theme = useTheme();
@@ -172,7 +172,7 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
               </ListItemButton>
             );
             return item.disabled ? (
-              <Tooltip key={item.key} title="对应端点尚未实现（phone/bind、recovery），接入后开放" placement="right">
+              <Tooltip key={item.key} title="恢复码功能即将上线，敬请期待" placement="right">
                 <Box>{row}</Box>
               </Tooltip>
             ) : (

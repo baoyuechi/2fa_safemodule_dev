@@ -4,21 +4,30 @@
 视觉风格学习 Google 账号认证页（宽版双栏认证卡、分步登录流、账户设置页），主题沿用品牌深蓝
 `#1a3c6e` 并支持明暗切换（仿 MUI 官方 templates 的 `shared-theme` 模式）。
 
-业务逻辑与 `app/` 三页 100% 对齐（登录 / 注册 / 绑定闭环，含 Conditional UI、fail-closed
-域名预检、错误字典与静默纪律）。旧版 `app/` 原样保留作对照与回退。
+登录/绑定闭环逻辑与 `app/` 对齐（含 Conditional UI、fail-closed 域名预检、错误字典与静默纪律）；
+注册流在此基础上演进为三步（邮箱验证 + 手机号绑定，需 GoTrue 邮件确认开启）。旧版 `app/` 原样保留作对照与回退。
 
-## 页面结构（4 路由）
+## 页面结构（8 路由）
 
 | 路由 | 页面 | 风格参照 |
 |---|---|---|
 | `/login` | 分步登录流：输入邮箱 → 选择登录方式（密码 / 通行密钥）→ 验证身份（密码 + 提示横幅 + 显示密码勾选）。已登录访问自动跳 `/security` | Google 宽版双栏认证卡 |
-| `/register` | 域名预检注册（宽版双栏卡）+ 手机 OTP 预留折叠区（Accordion） | 同上 |
+| `/register` | 注册第一步：邮箱 + 密码（域名预检 fail-closed） | 同上 |
+| `/register/check-email` | 注册第二步：输入邮件中的 6 位验证码（可重发；点击邮件链接则经 `/auth/confirm` 自动继续） | 同上 |
+| `/auth/confirm` | 邮件确认链接落地页：解析 fragment 会话或 token_hash → `/register/phone` | 同上 |
+| `/register/phone` | 注册第三步：手机号短信验证码一次性绑定（send/verify → phone/bind 核销）→ `/enroll` | 同上 |
 | `/enroll` | 通行密钥管理页：返回箭头 + 说明 + 「创建通行密钥」药丸 + 设备凭据列表卡（未登录跳 `/login`） | Google 通行密钥管理页 |
-| `/security` | 安全中心（登录后首页）：安全状态卡 + 登录选项列表（通行密钥/邮箱密码/手机号预留）+ 您的账号（邮箱 / 退出） | Google 安全性与登录账户页 |
+| `/security` | 安全中心（登录后首页）：安全状态卡 + 登录选项列表（通行密钥/邮箱密码/手机号）+ 您的账号（邮箱 / 退出） | Google 安全性与登录账户页 |
+| `/phone` | 手机号绑定信息页（注册时已绑定，仅说明） | 同上 |
 
-登录/注册页共用 `AuthShell`（左栏 Logo + 大标题 + 邮箱药丸，右栏交互区 + 右下角「下一步」药丸，
-页脚 帮助/隐私权/条款）；`/enroll` 与 `/security` 共用 `AccountShell`（顶栏品牌 + 头像菜单，
-左侧彩色圆标导航——手机号绑定 / 恢复码为预留禁用项，对应端点未实现）。
+登录/注册页共用 `AuthShell`（左栏 Logo + 大标题 + 邮箱药丸，右栏交互区垂直居中 + 右下角
+「下一步」药丸，页脚 帮助/隐私权/条款；整卡 fade-up 入场、步骤切换过渡）；`/enroll` 与
+`/security` 共用 `AccountShell`（顶栏品牌 + 头像菜单，左侧彩色圆标导航——恢复码为预留禁用项）。
+动效与阴影统一在 `shared-theme/motion.ts`（缓动曲线 + 关键帧）与 `theme.ts`（卡片双层柔和
+阴影、按钮悬浮轻抬、输入框聚焦柔光）。
+
+界面文案规范：**不出现 FR-x / AAL 等设计代号与端点编号**，一律用面向用户的简洁提示
+（代号仅保留在代码注释里）。
 
 ## 文件结构
 
@@ -30,18 +39,24 @@ app-react/
     ├── theme.ts                     # 品牌深蓝 + FIDO 绿；浅蓝灰底 #f0f4f9；明暗两套
     ├── shared-theme/
     │   ├── AppTheme.tsx             # ThemeProvider（cssVariables + system 跟随）
-    │   └── ColorModeIconDropdown.tsx# 明暗切换（浅→深→跟随系统，MUI 持久化 localStorage）
+    │   ├── ColorModeIconDropdown.tsx# 明暗切换（浅→深→跟随系统，MUI 持久化 localStorage）
+    │   └── motion.ts                # 统一动效：缓动曲线 + fade-up/toast 关键帧
     ├── api/
     │   └── mfaClient.ts             # L1 SDK 的 TS 移植（自 app/js/mfa-client.js）
     ├── components/
     │   ├── AuthShell.tsx            # 宽版双栏认证壳 + AuthActions（左次操作/右主操作）
     │   ├── AccountShell.tsx         # 账户页壳：顶栏 + 侧边栏导航 + 头像菜单
     │   ├── EmailPill.tsx            # Google 式邮箱药丸（可选下拉「使用其他账号」）
-    │   └── ToastHost.tsx            # 监听 `mfa:toast` 事件 → MUI Snackbar
+    │   ├── PageLoader.tsx           # 守卫跳转中的统一加载占位
+    │   └── ToastHost.tsx            # 监听 `mfa:toast` 事件 → 堆叠式消息条（同屏至多 5 条）
     └── pages/
         ├── LoginPage.tsx            # 分步登录流 + Conditional UI 常驻仪式
-        ├── RegisterPage.tsx         # 域名预检 + 注册 + 手机 OTP 预留区块
+        ├── RegisterPage.tsx         # 注册第一步：邮箱密码 + 域名预检
+        ├── CheckEmailPage.tsx       # 注册第二步：邮箱验证码
+        ├── ConfirmEmailPage.tsx     # 邮件确认链接落地页
+        ├── PhoneBindPage.tsx        # 注册第三步：手机号一次性绑定
         ├── EnrollPage.tsx           # 通行密钥管理页（创建/再绑/凭据列表）
+        ├── PhonePage.tsx            # 手机号绑定信息页
         └── SecurityPage.tsx         # 安全中心（状态卡 + 登录选项 + 账号信息）
 ```
 
@@ -51,7 +66,7 @@ app-react/
 |---|---|---|
 | 架构 | 零构建 MPA，`.html` 跳转 | Vite SPA，react-router |
 | WebAuthn 依赖 | self-host UMD（vendor/） | npm `@simplewebauthn/browser@^13`（与 server ^13 配对） |
-| Toast | SDK 注入 DOM + 手写 CSS | SDK 派发 `mfa:toast` CustomEvent → MUI Snackbar |
+| Toast | SDK 注入 DOM + 手写 CSS（堆叠） | SDK 派发 `mfa:toast` CustomEvent → MUI Alert 堆叠（同屏至多 5 条） |
 | L1 SDK | `mfa-client.js`（ESM） | `mfaClient.ts`（签名与错误字典一致） |
 
 三条移植时保住的硬约束：
@@ -82,18 +97,23 @@ npm run dev        # http://localhost:5173/login
 > 端口 5173 已在 `supabase/functions/_shared/mfa.config.js` 的 `corsAllowOrigins` 白名单内。
 > 注意白名单里是 `http://localhost:5173`（及 127.0.0.1 变体），换端口需同步补白名单。
 
-## 完整流程测试（2026-09-01 实测通过）
+## 完整流程测试（2026-09-02 实测通过）
+
+> 注册流已改为三步（邮箱密码 → 邮箱验证 → 手机号绑定），需 `supabase/config.toml` 的
+> `enable_confirmations = true` + `site_url = http://localhost:5173` 生效（改后需 `supabase stop && supabase start`）。
 
 | 步骤 | 操作 | 预期（实测结果） |
 |---|---|---|
 | 1 注册拦截 | /register 填 `gmail.com` 邮箱提交 | 红色 Toast「请使用学校邮箱注册」✅ |
-| 2 注册 | 合法 `@isawuhan.com` 提交 | Toast 成功 → 自动跳 /enroll（管理页空状态）✅ |
-| 3 绑定 | /enroll「创建通行密钥」 | 服务端 options 正常返回，等待指纹（IAB 无认证器则静默）✅ |
-| 4 登录分步流 | 退出 → /login：邮箱 → 下一步 → 选择方式 → 密码 → 下一步 | 跳转 /security ✅ |
-| 5 安全中心 | /security | 状态卡 + 未绑定 Chip + 侧边栏导航 ✅ |
-| 6 会话守卫 | 未登录直接开 /enroll 或 /security | replace 回 /login；已登录开 /login 跳 /security ✅ |
-| 7 头像菜单退出 | 顶栏头像 → 退出登录 | Toast + 回登录页 ✅ |
-| 8 明暗切换 | 右上角按钮循环 浅→深→跟随系统 | 认证卡 / 管理页 / 安全中心两套主题渲染正常 ✅ |
+| 2 注册第一步 | 合法 `@isawuhan.com` + 密码提交 | 跳 /register/check-email（验证码邮件在 Mailpit：http://127.0.0.1:54324）✅ |
+| 3 邮箱验证 | 输入邮件中的 6 位验证码（或点邮件链接经 /auth/confirm） | 会话建立 → 跳 /register/phone ✅ |
+| 4 手机号绑定 | 输入手机号 → 发送验证码（edge 日志取码）→ 验证并绑定 | 跳 /enroll ✅ |
+| 5 绑定 | /enroll「创建通行密钥」 | 服务端 options 正常返回，等待指纹（IAB 无认证器则静默）✅ |
+| 6 登录分步流 | 退出 → /login：邮箱 → 下一步 → 选择方式 → 密码 → 下一步 | 跳转 /security ✅ |
+| 7 安全中心 | /security | 状态卡 + 未绑定 Chip + 侧边栏导航 ✅ |
+| 8 会话守卫 | 未登录直接开 /enroll /security /phone /register/phone | replace 回 /login；已登录开 /login /register 跳 /security ✅ |
+| 9 头像菜单退出 | 顶栏头像 → 退出登录 | Toast + 回登录页 ✅ |
+| 10 明暗切换 | 右上角按钮循环 浅→深→跟随系统 | 认证卡 / 管理页 / 安全中心两套主题渲染正常 ✅ |
 
 Conditional UI / Touch ID 仪式需在真实浏览器（Chrome/Safari + 已录入指纹）中验证；
 In-app Browser 无平台认证器，仪式会静默降级——与设计一致（机会型体验铁律）。

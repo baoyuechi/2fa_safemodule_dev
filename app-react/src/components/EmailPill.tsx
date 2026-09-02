@@ -30,6 +30,8 @@ export default function EmailPill({ email, items }: { email: string; items?: Ema
           py: 0.75,
           bgcolor: 'background.paper',
           maxWidth: '100%',
+          transition: 'box-shadow .2s ease, border-color .2s ease',
+          '&:hover': { borderColor: 'text.disabled', boxShadow: '0 1px 6px rgba(60,64,67,.14)' },
         }}
       >
         <Box component="span" sx={{ fontSize: 14, overflowWrap: 'anywhere' }}>

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import { WebAuthnAbortService } from '@simplewebauthn/browser';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -6,9 +7,9 @@ import Checkbox from '@mui/material/Checkbox';
 import Divider from '@mui/material/Divider';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Link from '@mui/material/Link';
+import List from '@mui/material/List';
 import ListItemButton from '@mui/material/ListItemButton';
 import TextField from '@mui/material/TextField';
-import Card from '@mui/material/Card';
 import Typography from '@mui/material/Typography';
 import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
@@ -33,9 +34,11 @@ import {
 } from '../api/mfaClient';
 import type { AuthenticationResponseJSON } from '../api/mfaClient';
 
-// Conditional UI 在整个 SPA 生命周期只允许挂起一个常驻仪式；StrictMode 双调 useEffect
-// 时第二次直接跳过（第一次的仪式被跳过路径替代，浏览器侧最多静默 abort，无 UI 提示）。
-let conditionalStarted = false;
+// Conditional UI 挂起的仪式用组件级 ref 记账：新一帧挂载（含从别页返回）时重置为 false，
+// 从而每次进入登录页都会重新挂起常驻仪式；StrictMode 同一挂载的双调 useEffect 由
+// conditionalRef 哑元二次跳过（避免重复 start）。卸载时调用 WebAuthnAbortService.cancelCeremony()
+// 取消在途仪式，避免「幽灵登录」——用户中途转去注册/别页，conditional 仍存活完成指纹
+// 并强拽跳/security。
 
 type Step = 'email' | 'choose' | 'password';
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -87,9 +90,10 @@ export default function LoginPage() {
   // Conditional UI 早期尝试（Part 2 §4 常态体验）：能力探测通过即挂起一个
   // conditional 仪式，用户点邮箱输入框时浏览器直接弹出本机通行证。
   // 【机会型体验铁律】任何失败一律静默——只进 console，绝不 Toast 打扰用户。
+  const conditionalRef = React.useRef(false);
   React.useEffect(() => {
-    if (conditionalStarted) return;
-    conditionalStarted = true;
+    if (conditionalRef.current) return; // StrictMode 双调 / 重复触发：只起一个
+    conditionalRef.current = true;
     void (async () => {
       if (!browserSupportsWebAuthnSafe() || !(await browserSupportsWebAuthnAutofillSafe())) return;
       try {
@@ -100,11 +104,18 @@ export default function LoginPage() {
         console.warn('[mfa] Conditional UI 不可用（已静默降级为按钮登录）:', (e as Error)?.name, (e as Error)?.message);
       }
     })();
+    // 卸载 → 取消在途 conditional 仪式，防止 go to /register 途中完成指纹被幽灵登录拽走
+    return () => {
+      conditionalRef.current = false;
+      WebAuthnAbortService.cancelCeremony();
+    };
   }, [finishPasskeyLogin]);
 
-  // 邮箱步：下一步 → 选择登录方式
+  // 邮箱步：下一步 → 选择登录方式。邮箱可留空（留空 = 走通行密钥 discovery，
+  // 服务端空 allowCredentials 由服务端自动注入本机已绑凭据）；非空才校验格式。
   function handleEmailNext() {
-    if (!EMAIL_RE.test(email.trim())) return toast('请输入有效的邮箱地址', 'error');
+    const mail = email.trim();
+    if (mail && !EMAIL_RE.test(mail)) return toast('请输入有效的邮箱地址', 'error');
     setStep('choose');
   }
 
@@ -147,30 +158,32 @@ export default function LoginPage() {
     );
   }
 
-  const emailPill = <EmailPill email={email.trim().toLowerCase()} items={[{ label: '使用其他账号', onClick: () => setStep('email') }]} />;
+  // 「使用其他账号」= 重置整个登录流（Google 行为）：清空邮箱/密码并回到输入邮箱步
+  const emailPill = (
+    <EmailPill
+      email={email.trim().toLowerCase()}
+      items={[
+        {
+          label: '使用其他账号',
+          onClick: () => {
+            setEmail('');
+            setPassword('');
+            setShowPassword(false);
+            setStep('email');
+          },
+        },
+      ]}
+    />
+  );
 
   return (
     <AuthShell
       title={step === 'email' ? '登录' : '欢迎回来'}
       subtitle={step === 'email' ? '使用你的学校邮箱账号继续' : undefined}
       leftExtra={step === 'email' ? undefined : emailPill}
-    >
-      {step === 'email' && (
-        <>
-          <TextField
-            label="学校邮箱"
-            type="email"
-            autoFocus
-            fullWidth
-            placeholder="you@isawuhan.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleEmailNext()}
-            // autocomplete="username webauthn"：同一输入框承接 Conditional UI
-            // （webauthn 必须排在最后，tech 清单 §1.4）。页面加载后自动发起
-            // conditional 仪式——输入框聚焦时浏览器直接弹出本机通行证。
-            slotProps={{ htmlInput: { autoComplete: 'username webauthn' } }}
-          />
+      transitionKey={step}
+      actions={
+        step === 'email' ? (
           <AuthActions
             secondary={
               <Link component={RouterLink} to="/register" underline="hover">
@@ -183,17 +196,48 @@ export default function LoginPage() {
               </Button>
             }
           />
-        </>
+        ) : step === 'password' ? (
+          <AuthActions
+            secondary={
+              <Button variant="text" onClick={() => setStep('choose')}>
+                试试其他方式
+              </Button>
+            }
+            primary={
+              <Button variant="contained" size="large" onClick={handlePasswordLogin} disabled={busyPassword}>
+                {busyPassword ? '登录中…' : '下一步'}
+              </Button>
+            }
+          />
+        ) : undefined
+      }
+    >
+      {step === 'email' && (
+        <TextField
+          label="学校邮箱"
+          type="email"
+          autoFocus
+          fullWidth
+          placeholder="you@isawuhan.com"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleEmailNext()}
+          // autocomplete="username webauthn"：同一输入框承接 Conditional UI
+          // （webauthn 必须排在最后，tech 清单 §1.4）。页面加载后自动发起
+          // conditional 仪式——输入框聚焦时浏览器直接弹出本机通行证。
+          slotProps={{ htmlInput: { autoComplete: 'username webauthn' } }}
+        />
       )}
 
       {step === 'choose' && (
         <>
           <Typography variant="h2">选择您想要使用的登录方式：</Typography>
-          <Card variant="outlined" sx={{ py: 0.5 }}>
+          {/* Google 式：无描边卡片，整行分隔线列表撑满右栏 */}
+          <List disablePadding>
             <ListItemButton
               onClick={() => setStep('password')}
               disabled={busyPasskey}
-              sx={{ py: 2, px: 2.5, borderRadius: 0 }}
+              sx={{ py: 1.75, px: 0.5, borderRadius: 0 }}
             >
               <LockRoundedIcon sx={{ mr: 2.5, color: 'primary.main' }} />
               <Typography>输入您的密码</Typography>
@@ -201,13 +245,13 @@ export default function LoginPage() {
             {passkeySupported && (
               <>
                 <Divider component="li" />
-                <ListItemButton onClick={handlePasskey} disabled={busyPasskey} sx={{ py: 2, px: 2.5, borderRadius: 0 }}>
+                <ListItemButton onClick={handlePasskey} disabled={busyPasskey} sx={{ py: 1.75, px: 0.5, borderRadius: 0 }}>
                   <FingerprintRoundedIcon sx={{ mr: 2.5, color: 'primary.main' }} />
                   <Typography>{busyPasskey ? '等待指纹验证…' : '使用您的通行密钥'}</Typography>
                 </ListItemButton>
               </>
             )}
-          </Card>
+          </List>
           {passkeySupported && (
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
               推荐：Touch ID / Windows Hello 一触即达，无需输入密码
@@ -221,7 +265,6 @@ export default function LoginPage() {
           <Alert severity="info" icon={<FingerprintRoundedIcon fontSize="inherit" />}>
             不妨选择「使用您的通行密钥」，更轻松更安全地登录
           </Alert>
-          <Typography>如需继续操作，请先验证您的身份</Typography>
           <TextField
             label="输入您的密码"
             type={showPassword ? 'text' : 'password'}
@@ -236,18 +279,6 @@ export default function LoginPage() {
             control={<Checkbox checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
             label={<Typography variant="body2">显示密码</Typography>}
             sx={{ alignSelf: 'flex-start' }}
-          />
-          <AuthActions
-            secondary={
-              <Button variant="text" onClick={() => setStep('choose')}>
-                试试其他方式
-              </Button>
-            }
-            primary={
-              <Button variant="contained" size="large" onClick={handlePasswordLogin} disabled={busyPassword}>
-                {busyPassword ? '登录中…' : '下一步'}
-              </Button>
-            }
           />
         </>
       )}

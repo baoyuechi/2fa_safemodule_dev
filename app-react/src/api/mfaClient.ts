@@ -18,6 +18,7 @@ import {
 import type {
   AuthenticationResponseJSON,
   PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
 
@@ -216,6 +217,28 @@ export async function exchangeTokenHash(tokenHash: string): Promise<MfaSession> 
   return session;
 }
 
+/** 邮箱确认：GoTrue 邮件里的 6 位验证码 → 标准会话（type=signup 的 OTP 流） */
+export async function confirmEmailWithCode(email: string, code: string): Promise<MfaSession> {
+  const session = await authCall<MfaSession>('/verify', {
+    body: { type: 'signup', email, token: code },
+  });
+  if (!session?.access_token) throw mfaError('FALLBACK', 'signup verify returned no session');
+  return session;
+}
+
+/** 邮箱确认（链接回跳场景）：从 URL fragment 提取的会话未经此函数；此为契约占位
+ *  （生产 Supabase 新版签发 token_hash 链接时启用，见 ConfirmEmailPage 说明）。 */
+export async function confirmEmailWithTokenHash(tokenHash: string): Promise<MfaSession> {
+  const session = await authCall<MfaSession>('/verify', { body: { type: 'signup', token_hash: tokenHash } });
+  if (!session?.access_token) throw mfaError('FALLBACK', 'signup verify returned no session');
+  return session;
+}
+
+/** 重新发送注册确认邮件（未确认/过期时用） */
+export async function resendEmail(email: string): Promise<void> {
+  await authCall('/resend', { body: { type: 'signup', email } });
+}
+
 // ---------------------------------------------------------------------------
 // L0 端点封装（Part 5 §三；已交付端点全覆盖，供后续页面复用）
 // ---------------------------------------------------------------------------
@@ -227,6 +250,9 @@ export const sendOtp = (phone: string) => apiCall('/phone/send-otp', { phone });
 /** 端点 3 · phone/verify-otp：{phone, code} → {ok, otpToken} */
 export const verifyOtp = (phone: string, code: string) =>
   apiCall<{ ok: boolean; otpToken?: string }>('/phone/verify-otp', { phone, code });
+/** 端点 4 · phone/bind（需会话）：{otpToken, phone} → {ok}，一次性核销票据并写绑定 */
+export const phoneBind = (token: string, otpToken: string, phone: string) =>
+  apiCall<{ ok: boolean }>('/phone/bind', { otpToken, phone }, { token });
 
 /** 端点 5 · webauthn/register-options（需会话）：{purpose} → {optionsJSON} */
 export const registerOptions = (token: string, purpose = 'enroll') =>
@@ -236,7 +262,7 @@ export const registerVerify = (token: string, response: RegistrationResponseJSON
   apiCall<{ ok: boolean; credentialId: string }>('/webauthn/register-verify', { response }, { token });
 /** 端点 7 · webauthn/login-options（无认证）：{email?} → {optionsJSON}，空体=discovery */
 export const loginOptions = (body: { email?: string } = {}) =>
-  apiCall<{ optionsJSON: PublicKeyCredentialCreationOptionsJSON }>('/webauthn/login-options', body);
+  apiCall<{ optionsJSON: PublicKeyCredentialRequestOptionsJSON }>('/webauthn/login-options', body);
 /** 端点 8 · webauthn/login-verify（无认证）：{email?, response} → {token_hash} */
 export const loginVerify = (body: { email?: string; response: AuthenticationResponseJSON }) =>
   apiCall<{ token_hash: string }>('/webauthn/login-verify', body);
@@ -282,7 +308,7 @@ export async function submitPasskeyRegistration(token: string, attestation: Regi
  * useBrowserAutofill=true 走 Conditional UI（输入框须带 autocomplete="webauthn"）。
  */
 export async function startPasskeyAuthentication(
-  optionsJSON: PublicKeyCredentialCreationOptionsJSON,
+  optionsJSON: PublicKeyCredentialRequestOptionsJSON,
   { useBrowserAutofill = false }: { useBrowserAutofill?: boolean } = {},
 ): Promise<AuthenticationResponseJSON> {
   try {
