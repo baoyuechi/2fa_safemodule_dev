@@ -3,9 +3,11 @@ import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
 import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
+import InputError from '../components/InputError';
 import {
   checkEmailDomain,
   clearSession,
@@ -25,6 +27,10 @@ export default function RegisterPage() {
   const [password, setPassword] = React.useState('');
   const [password2, setPassword2] = React.useState('');
   const [busy, setBusy] = React.useState(false);
+  // 行内字段错误（InputError 红字），输入即清除
+  const [emailError, setEmailError] = React.useState<string | null>(null);
+  const [passwordError, setPasswordError] = React.useState<string | null>(null);
+  const [confirmError, setConfirmError] = React.useState<string | null>(null);
 
   // 已登录守卫（与 /login 对称）：有效会话 → 回安全中心，避免已登录用户注册新账号
   // 静默覆盖现有 mfa.session（新用户在允许域名，signUp 会写入新会话）。
@@ -47,23 +53,30 @@ export default function RegisterPage() {
   if (checking) return null; // 守卫跳转中：留白，避免一闪而过的表单
 
   // 注册：邮箱格式 → 域名预检（fail-closed）→ GoTrue 注册 →
-  // 邮箱验证通过后才有会话 → 手机号绑定 → 指纹绑定
+  // 邮箱验证通过后才有会话 → 手机号绑定 → 指纹绑定。
+  // 字段级错误走行内红字（InputError），与字段无关的仍走 Toast。
   async function handleRegister() {
     const mail = email.trim().toLowerCase();
-    if (!EMAIL_RE.test(mail)) return toast('请输入有效的邮箱地址', 'error');
-    if (password.length < 6) return toast('密码至少 6 位', 'error');
-    if (password !== password2) return toast('两次输入的密码不一致', 'error');
+    if (!EMAIL_RE.test(mail)) return setEmailError('请输入有效的学校邮箱地址');
+    if (password.length < 6) return setPasswordError('密码至少需要 6 位');
+    if (password !== password2) return setConfirmError('两次输入的密码不一致，请重新输入');
     setBusy(true);
     try {
-      await checkEmailDomain({ email: mail }); // DOMAIN_NOT_ALLOWED → 字典文案"请使用学校邮箱注册"
+      await checkEmailDomain({ email: mail });
       await signUp(mail, password);
       // 邮箱持久化：state 刷新即丢，写入 sessionStorage 供 CheckEmail 刷新后回退
       sessionStorage.setItem('mfa.pendingEmail', mail);
       toast('注册成功，验证邮件已发送', 'success');
       navigate('/register/check-email', { state: { email: mail }, replace: true });
     } catch (e) {
-      handleError(e);
-      setBusy(false);
+      const err = e as { code?: string; message?: string };
+      if (err?.code === 'DOMAIN_NOT_ALLOWED' || err?.code === 'EMAIL_TAKEN') {
+        setEmailError(err.message ?? '该邮箱无法使用');
+        setBusy(false);
+      } else {
+        handleError(e);
+        setBusy(false);
+      }
     }
   }
 
@@ -105,28 +118,48 @@ export default function RegisterPage() {
           autoFocus
           placeholder="you@isawuhan.com"
           value={email}
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) => {
+            setEmail(e.target.value);
+            setEmailError(null);
+          }}
           slotProps={{ htmlInput: { autoComplete: 'email' } }}
-          helperText="仅支持学校邮箱（@isawuhan.com）"
+          error={Boolean(emailError)}
         />
+        {emailError ? (
+          <InputError message={emailError} />
+        ) : (
+          <Typography variant="caption" sx={{ color: 'text.secondary', mt: -1 }}>
+            仅支持学校邮箱（@isawuhan.com）
+          </Typography>
+        )}
         <TextField
           label="设置密码"
           type="password"
           required
           placeholder="至少 6 位"
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => {
+            setPassword(e.target.value);
+            setPasswordError(null);
+          }}
           slotProps={{ htmlInput: { autoComplete: 'new-password', minLength: 6 } }}
+          error={Boolean(passwordError)}
         />
+        <InputError message={passwordError} />
         <TextField
           label="确认密码"
           type="password"
           required
           placeholder="再次输入密码"
           value={password2}
-          onChange={(e) => setPassword2(e.target.value)}
+          onChange={(e) => {
+            setPassword2(e.target.value);
+            setConfirmError(null);
+          }}
           slotProps={{ htmlInput: { autoComplete: 'new-password', minLength: 6 } }}
+          error={Boolean(confirmError)}
         />
+        <InputError message={confirmError} />
       </Stack>
     </AuthShell>
   );

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
@@ -7,6 +8,7 @@ import Typography from '@mui/material/Typography';
 import { useNavigate } from 'react-router-dom';
 import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
+import InputError from '../components/InputError';
 import PageLoader from '../components/PageLoader';
 import {
   clearSession,
@@ -31,6 +33,9 @@ export default function PhoneBindPage() {
   const [countdown, setCountdown] = React.useState(0);
   const [sendingOtp, setSendingOtp] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
+  // 行内字段错误（InputError 红字），输入即清除
+  const [phoneError, setPhoneError] = React.useState<string | null>(null);
+  const [codeError, setCodeError] = React.useState<string | null>(null);
 
   // 会话守卫：未确认邮箱 / 会话失效 → 回登录页（邮箱验证成功才有会话）
   React.useEffect(() => {
@@ -57,15 +62,18 @@ export default function PhoneBindPage() {
 
   async function handleSendOtp() {
     const normalized = phone.replace(/[\s-]/g, '');
-    if (!PHONE_RE.test(normalized)) return toast('请输入正确的手机号', 'error');
+    if (!PHONE_RE.test(normalized)) return setPhoneError('请输入正确的 11 位手机号');
     if (sendingOtp || countdown > 0) return; // 请求飞行中禁用，防双击双发耗 24h 限 5 条配额
+    setPhoneError(null);
     setSendingOtp(true);
     try {
       await sendOtp(normalized);
       toast('验证码已发送（模拟短信，码在 edge 日志）', 'success');
       setCountdown(60);
     } catch (e) {
-      handleError(e); // PHONE_TAKEN / RATE_LIMITED 字典文案
+      const err = e as { code?: string; message?: string };
+      if (err?.code === 'PHONE_TAKEN') setPhoneError(err.message ?? '该手机号已被使用');
+      else handleError(e); // RATE_LIMITED 等与字段无关 → Toast
     } finally {
       setSendingOtp(false);
     }
@@ -74,8 +82,8 @@ export default function PhoneBindPage() {
   // 验证 + 一次性绑定：verify-otp 签发票据 → phone/bind 核销并写库 → 前往指纹绑定
   async function handleVerifyAndBind() {
     const normalized = phone.replace(/[\s-]/g, '');
-    if (!PHONE_RE.test(normalized)) return toast('请输入正确的手机号', 'error');
-    if (!/^\d{6}$/.test(otpCode.trim())) return toast('请输入 6 位验证码', 'error');
+    if (!PHONE_RE.test(normalized)) return setPhoneError('请输入正确的 11 位手机号');
+    if (!/^\d{6}$/.test(otpCode.trim())) return setCodeError('请输入 6 位数字验证码');
     const session = getSession();
     if (!session?.access_token) return;
     setBusy(true);
@@ -86,7 +94,9 @@ export default function PhoneBindPage() {
       toast('手机号绑定成功', 'success');
       navigate('/enroll', { replace: true });
     } catch (e) {
-      handleError(e); // OTP_EXPIRED / PHONE_TAKEN / RATE_LIMITED
+      const err = e as { code?: string; message?: string };
+      if (err?.code === 'OTP_EXPIRED') setCodeError(err.message ?? '验证码已过期，请重新获取');
+      else handleError(e);
     } finally {
       setBusy(false);
     }
@@ -123,31 +133,46 @@ export default function PhoneBindPage() {
       }
     >
       <Stack spacing={2}>
-        <TextField
-          label="手机号"
-          type="tel"
-          placeholder="13x xxxx xxxx"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value)}
-          slotProps={{ htmlInput: { maxLength: 13 } }}
-        />
-        <Stack direction="row" spacing={1} alignItems="flex-start">
+        <Box>
           <TextField
-            label="6 位验证码"
-            value={otpCode}
-            onChange={(e) => setOtpCode(e.target.value)}
-            slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 6 } }}
-            sx={{ flex: 1 }}
+            label="手机号"
+            type="tel"
+            placeholder="13x xxxx xxxx"
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value);
+              setPhoneError(null);
+            }}
+            fullWidth
+            slotProps={{ htmlInput: { maxLength: 13 } }}
+            error={Boolean(phoneError)}
           />
-          <Button
-            variant="outlined"
-            onClick={handleSendOtp}
-            disabled={sendingOtp || countdown > 0}
-            sx={{ whiteSpace: 'nowrap', mt: 0.5 }}
-          >
-            {sendingOtp ? '发送中…' : countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
-          </Button>
-        </Stack>
+          <InputError message={phoneError} />
+        </Box>
+        <Box>
+          <Stack direction="row" spacing={1} alignItems="flex-start">
+            <TextField
+              label="6 位验证码"
+              value={otpCode}
+              onChange={(e) => {
+                setOtpCode(e.target.value);
+                setCodeError(null);
+              }}
+              slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 6 } }}
+              sx={{ flex: 1 }}
+              error={Boolean(codeError)}
+            />
+            <Button
+              variant="outlined"
+              onClick={handleSendOtp}
+              disabled={sendingOtp || countdown > 0}
+              sx={{ whiteSpace: 'nowrap', mt: 0.5 }}
+            >
+              {sendingOtp ? '发送中…' : countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
+            </Button>
+          </Stack>
+          <InputError message={codeError} />
+        </Box>
       </Stack>
 
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>

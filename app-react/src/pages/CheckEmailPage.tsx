@@ -6,6 +6,7 @@ import Typography from '@mui/material/Typography';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
+import InputError from '../components/InputError';
 import { confirmEmailWithCode, getSession, handleError, resendEmail, saveSession, toast } from '../api/mfaClient';
 
 interface CheckEmailState {
@@ -24,6 +25,8 @@ export default function CheckEmailPage() {
   const [code, setCode] = React.useState('');
   const [busy, setBusy] = React.useState(false);
   const [sending, setSending] = React.useState(false);
+  // 行内字段错误（InputError 红字），输入即清除
+  const [codeError, setCodeError] = React.useState<string | null>(null);
 
   // 会话已存在（本浏览器已完成邮箱验证）→ 直达手机号绑定；否则无邮箱 → 回注册
   React.useEffect(() => {
@@ -49,16 +52,19 @@ export default function CheckEmailPage() {
     }
   }
 
-  // 邮箱验证：输入邮件中的 6 位验证码 → 换标准会话 → 手机号绑定
+  // 邮箱验证：输入邮件中的 6 位验证码 → 换标准会话 → 手机号绑定。
+  // 码相关错误在验证码框下方行内提示（Google 式），其余仍走 Toast。
   async function handleVerify() {
-    if (!/^\d{6}$/.test(code.trim())) return toast('请输入 6 位验证码', 'error');
+    if (!/^\d{6}$/.test(code.trim())) return setCodeError('请输入邮件中的 6 位数字验证码');
     setBusy(true);
     try {
       saveSession(await confirmEmailWithCode(email, code.trim()));
       toast('邮箱验证成功', 'success');
       navigate('/register/phone', { replace: true });
     } catch (e) {
-      handleError(e); // 码错误/过期 → 提示重新获取
+      const err = e as { code?: string; message?: string };
+      if (err?.code === 'OTP_EXPIRED') setCodeError(err.message ?? '验证码已过期，请重新获取');
+      else setCodeError('验证码不正确，请检查后重试'); // 防枚举：码错误统一文案
     } finally {
       setBusy(false);
     }
@@ -96,10 +102,15 @@ export default function CheckEmailPage() {
       <TextField
         label="6 位验证码"
         value={code}
-        onChange={(e) => setCode(e.target.value)}
+        onChange={(e) => {
+          setCode(e.target.value);
+          setCodeError(null);
+        }}
         onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
         slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 6 } }}
+        error={Boolean(codeError)}
       />
+      <InputError message={codeError} />
 
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         本地开发：验证邮件在本地邮箱面板查看 → http://127.0.0.1:54324（Mailpit）。若点击了邮件内的验证链接，页面会自动继续，无需再输码。

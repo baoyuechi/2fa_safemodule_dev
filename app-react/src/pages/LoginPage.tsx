@@ -17,6 +17,7 @@ import CircularProgress from '@mui/material/CircularProgress';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
+import InputError from '../components/InputError';
 import {
   browserSupportsWebAuthnAutofillSafe,
   browserSupportsWebAuthnSafe,
@@ -53,6 +54,9 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [busyPasskey, setBusyPasskey] = React.useState(false);
   const [busyPassword, setBusyPassword] = React.useState(false);
+  // 行内字段错误（InputError 红字），输入即清除
+  const [emailError, setEmailError] = React.useState<string | null>(null);
+  const [passwordError, setPasswordError] = React.useState<string | null>(null);
   // WebAuthn 能力探测：不支持时隐藏「使用您的通行密钥」入口
   const [passkeySupported, setPasskeySupported] = React.useState(true);
   React.useEffect(() => {
@@ -113,10 +117,11 @@ export default function LoginPage() {
 
   // 邮箱步：下一步 → 选择登录方式。邮箱必填且须为合法格式；
   // 通行密钥 discovery 直登由 Conditional UI 路径承担，此处不做留空放行。
+  // 字段级错误走行内红字（InputError），不再弹 Toast。
   function handleEmailNext() {
     const mail = email.trim();
-    if (!mail) return toast('请输入学校邮箱', 'error');
-    if (!EMAIL_RE.test(mail)) return toast('请输入有效的邮箱地址', 'error');
+    if (!mail) return setEmailError('请输入学校邮箱');
+    if (!EMAIL_RE.test(mail)) return setEmailError('请输入有效的邮箱地址');
     setStep('choose');
   }
 
@@ -135,7 +140,7 @@ export default function LoginPage() {
     }
   }
 
-  // 密码步：邮箱密码登录
+  // 密码步：邮箱密码登录。凭据错误在密码框下方行内提示（Google 式），其余仍走 Toast。
   async function handlePasswordLogin() {
     setBusyPassword(true);
     try {
@@ -143,7 +148,13 @@ export default function LoginPage() {
       toast('登录成功', 'success');
       navigate('/security', { replace: true });
     } catch (e) {
-      handleError(e);
+      const err = e as { code?: string; message?: string };
+      if (err?.code === 'INVALID_CREDENTIALS') {
+        setPasswordError('邮箱或密码不正确。请重试或使用通行密钥登录');
+        setPassword('');
+      } else {
+        handleError(e);
+      }
     } finally {
       setBusyPassword(false);
     }
@@ -214,20 +225,27 @@ export default function LoginPage() {
       }
     >
       {step === 'email' && (
-        <TextField
-          label="学校邮箱"
-          type="email"
-          autoFocus
-          fullWidth
-          placeholder="you@isawuhan.com"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && handleEmailNext()}
-          // autocomplete="username webauthn"：同一输入框承接 Conditional UI
-          // （webauthn 必须排在最后，tech 清单 §1.4）。页面加载后自动发起
-          // conditional 仪式——输入框聚焦时浏览器直接弹出本机通行证。
-          slotProps={{ htmlInput: { autoComplete: 'username webauthn' } }}
-        />
+        <>
+          <TextField
+            label="学校邮箱"
+            type="email"
+            autoFocus
+            fullWidth
+            placeholder="you@isawuhan.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setEmailError(null);
+            }}
+            onKeyDown={(e) => e.key === 'Enter' && handleEmailNext()}
+            error={Boolean(emailError)}
+            // autocomplete="username webauthn"：同一输入框承接 Conditional UI
+            // （webauthn 必须排在最后，tech 清单 §1.4）。页面加载后自动发起
+            // conditional 仪式——输入框聚焦时浏览器直接弹出本机通行证。
+            slotProps={{ htmlInput: { autoComplete: 'username webauthn' } }}
+          />
+          <InputError message={emailError} />
+        </>
       )}
 
       {step === 'choose' && (
@@ -272,10 +290,15 @@ export default function LoginPage() {
             autoFocus
             fullWidth
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setPasswordError(null);
+            }}
             onKeyDown={(e) => e.key === 'Enter' && handlePasswordLogin()}
+            error={Boolean(passwordError)}
             slotProps={{ htmlInput: { autoComplete: 'current-password' } }}
           />
+          <InputError message={passwordError} />
           <FormControlLabel
             control={<Checkbox checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
             label={<Typography variant="body2">显示密码</Typography>}
