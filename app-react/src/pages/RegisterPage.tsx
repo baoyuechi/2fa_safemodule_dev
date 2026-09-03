@@ -1,4 +1,5 @@
 import * as React from 'react';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
 import Stack from '@mui/material/Stack';
@@ -111,55 +112,62 @@ export default function RegisterPage() {
         }}
         noValidate
       >
-        <TextField
-          label="学校邮箱"
-          type="email"
-          required
-          autoFocus
-          placeholder="you@isawuhan.com"
-          value={email}
-          onChange={(e) => {
-            setEmail(e.target.value);
-            setEmailError(null);
-          }}
-          slotProps={{ htmlInput: { autoComplete: 'email' } }}
-          error={Boolean(emailError)}
-        />
-        {emailError ? (
-          <InputError message={emailError} />
-        ) : (
-          <Typography variant="caption" sx={{ color: 'text.secondary', mt: -1 }}>
-            仅支持学校邮箱（@isawuhan.com）
-          </Typography>
-        )}
-        <TextField
-          label="设置密码"
-          type="password"
-          required
-          placeholder="至少 6 位"
-          value={password}
-          onChange={(e) => {
-            setPassword(e.target.value);
-            setPasswordError(null);
-          }}
-          slotProps={{ htmlInput: { autoComplete: 'new-password', minLength: 6 } }}
-          error={Boolean(passwordError)}
-        />
-        <InputError message={passwordError} />
-        <TextField
-          label="确认密码"
-          type="password"
-          required
-          placeholder="再次输入密码"
-          value={password2}
-          onChange={(e) => {
-            setPassword2(e.target.value);
-            setConfirmError(null);
-          }}
-          slotProps={{ htmlInput: { autoComplete: 'new-password', minLength: 6 } }}
-          error={Boolean(confirmError)}
-        />
-        <InputError message={confirmError} />
+        {/* Box 包裹：避免 InputError 成为 Stack 直接子元素而被 spacing 撑开间距 */}
+        <Box>
+          <TextField
+            label="学校邮箱"
+            type="email"
+            required
+            autoFocus
+            placeholder="you@isawuhan.com"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setEmailError(null);
+            }}
+            slotProps={{ htmlInput: { autoComplete: 'email' } }}
+            error={Boolean(emailError)}
+          />
+          {emailError ? (
+            <InputError message={emailError} />
+          ) : (
+            <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
+              仅支持学校邮箱（@isawuhan.com）
+            </Typography>
+          )}
+        </Box>
+        <Box>
+          <TextField
+            label="设置密码"
+            type="password"
+            required
+            placeholder="至少 6 位"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setPasswordError(null);
+            }}
+            slotProps={{ htmlInput: { autoComplete: 'new-password', minLength: 6 } }}
+            error={Boolean(passwordError)}
+          />
+          <InputError message={passwordError} />
+        </Box>
+        <Box>
+          <TextField
+            label="确认密码"
+            type="password"
+            required
+            placeholder="再次输入密码"
+            value={password2}
+            onChange={(e) => {
+              setPassword2(e.target.value);
+              setConfirmError(null);
+            }}
+            slotProps={{ htmlInput: { autoComplete: 'new-password', minLength: 6 } }}
+            error={Boolean(confirmError)}
+          />
+          <InputError message={confirmError} />
+        </Box>
       </Stack>
     </AuthShell>
   );

@@ -1,4 +1,5 @@
 import * as React from 'react';
+import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Link from '@mui/material/Link';
 import TextField from '@mui/material/TextField';
@@ -99,18 +100,20 @@ export default function CheckEmailPage() {
         发送了一封验证邮件，请把邮件中的 6 位验证码填在下方。
       </Typography>
 
-      <TextField
-        label="6 位验证码"
-        value={code}
-        onChange={(e) => {
-          setCode(e.target.value);
-          setCodeError(null);
-        }}
-        onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
-        slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 6 } }}
-        error={Boolean(codeError)}
-      />
-      <InputError message={codeError} />
+      <Box>
+        <TextField
+          label="6 位验证码"
+          value={code}
+          onChange={(e) => {
+            setCode(e.target.value);
+            setCodeError(null);
+          }}
+          onKeyDown={(e) => e.key === 'Enter' && handleVerify()}
+          slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 6 } }}
+          error={Boolean(codeError)}
+        />
+        <InputError message={codeError} />
+      </Box>
 
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
         本地开发：验证邮件在本地邮箱面板查看 → http://127.0.0.1:54324（Mailpit）。若点击了邮件内的验证链接，页面会自动继续，无需再输码。

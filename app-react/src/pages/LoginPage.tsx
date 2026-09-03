@@ -225,7 +225,7 @@ export default function LoginPage() {
       }
     >
       {step === 'email' && (
-        <>
+        <Box>
           <TextField
             label="学校邮箱"
             type="email"
@@ -244,8 +244,9 @@ export default function LoginPage() {
             // conditional 仪式——输入框聚焦时浏览器直接弹出本机通行证。
             slotProps={{ htmlInput: { autoComplete: 'username webauthn' } }}
           />
+          {/* Box 包裹：避免 InputError 成为 Stack 直接子元素而被 spacing 撑开间距 */}
           <InputError message={emailError} />
-        </>
+        </Box>
       )}
 
       {step === 'choose' && (
@@ -284,21 +285,23 @@ export default function LoginPage() {
           <Alert severity="info" icon={<FingerprintRoundedIcon fontSize="inherit" />}>
             不妨选择「使用您的通行密钥」，更轻松更安全地登录
           </Alert>
-          <TextField
-            label="输入您的密码"
-            type={showPassword ? 'text' : 'password'}
-            autoFocus
-            fullWidth
-            value={password}
-            onChange={(e) => {
-              setPassword(e.target.value);
-              setPasswordError(null);
-            }}
-            onKeyDown={(e) => e.key === 'Enter' && handlePasswordLogin()}
-            error={Boolean(passwordError)}
-            slotProps={{ htmlInput: { autoComplete: 'current-password' } }}
-          />
-          <InputError message={passwordError} />
+          <Box>
+            <TextField
+              label="输入您的密码"
+              type={showPassword ? 'text' : 'password'}
+              autoFocus
+              fullWidth
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                setPasswordError(null);
+              }}
+              onKeyDown={(e) => e.key === 'Enter' && handlePasswordLogin()}
+              error={Boolean(passwordError)}
+              slotProps={{ htmlInput: { autoComplete: 'current-password' } }}
+            />
+            <InputError message={passwordError} />
+          </Box>
           <FormControlLabel
             control={<Checkbox checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
             label={<Typography variant="body2">显示密码</Typography>}

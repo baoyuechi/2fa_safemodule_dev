@@ -28,7 +28,7 @@ export default function InputError({ message }: InputErrorProps) {
     >
       <Typography
         variant="caption"
-        sx={{ mt: 0.75, display: 'flex', alignItems: 'center', gap: 0.5, color: 'error.main' }}
+        sx={{ mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5, color: 'error.main' }}
         role="alert"
       >
         <ErrorOutlineRoundedIcon sx={{ fontSize: 15, flexShrink: 0 }} />
