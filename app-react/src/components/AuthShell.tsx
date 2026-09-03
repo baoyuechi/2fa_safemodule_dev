@@ -50,8 +50,17 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
       >
         <Card variant="outlined" sx={{ width: '100%', maxWidth: 900, ...enterFadeUp }}>
           <Stack direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch', minHeight: { md: 460 } }}>
-            {/* 左栏：品牌 + 标题（顶对齐，Google 式） */}
-            <Box sx={{ flex: 1, p: { xs: 3, sm: 5 }, pr: { md: 2 } }}>
+            {/* 左栏：品牌 + 标题（内容块垂直居中，与右栏输入框平齐，Google 式中部构图） */}
+            <Box
+              sx={{
+                flex: 1,
+                p: { xs: 3, sm: 5 },
+                pr: { md: 2 },
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+              }}
+            >
               <Stack spacing={2.5}>
                 <FingerprintRoundedIcon color="primary" sx={{ fontSize: 44 }} />
                 <Typography variant="h1">{title}</Typography>
@@ -60,7 +69,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
               </Stack>
             </Box>
 
-            {/* 右栏：内容置顶 + 动作行沉底 */}
+            {/* 右栏：内容块垂直居中（卡片中部）+ 动作行沉底 */}
             <Box
               key={transitionKey}
               sx={[
@@ -74,7 +83,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
                 ...(transitionKey ? [stepFadeUp] : []),
               ]}
             >
-              <Box sx={{ flex: 1 }}>
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <Stack spacing={2.5} alignItems="stretch">
                   {children}
                 </Stack>

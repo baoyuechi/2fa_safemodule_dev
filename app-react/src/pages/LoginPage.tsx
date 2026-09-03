@@ -111,11 +111,12 @@ export default function LoginPage() {
     };
   }, [finishPasskeyLogin]);
 
-  // 邮箱步：下一步 → 选择登录方式。邮箱可留空（留空 = 走通行密钥 discovery，
-  // 服务端空 allowCredentials 由服务端自动注入本机已绑凭据）；非空才校验格式。
+  // 邮箱步：下一步 → 选择登录方式。邮箱必填且须为合法格式；
+  // 通行密钥 discovery 直登由 Conditional UI 路径承担，此处不做留空放行。
   function handleEmailNext() {
     const mail = email.trim();
-    if (mail && !EMAIL_RE.test(mail)) return toast('请输入有效的邮箱地址', 'error');
+    if (!mail) return toast('请输入学校邮箱', 'error');
+    if (!EMAIL_RE.test(mail)) return toast('请输入有效的邮箱地址', 'error');
     setStep('choose');
   }
 
