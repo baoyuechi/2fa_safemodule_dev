@@ -49,7 +49,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
         }}
       >
         <Card variant="outlined" sx={{ width: '100%', maxWidth: 900, ...enterFadeUp }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch', minHeight: { md: 460 } }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch', minHeight: { md: 400 } }}>
             {/* 左栏：品牌 + 标题（内容块垂直居中，与右栏输入框平齐，Google 式中部构图） */}
             <Box
               sx={{
