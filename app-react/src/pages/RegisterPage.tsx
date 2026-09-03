@@ -21,6 +21,14 @@ import {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** 邮箱校验：空 → 提示输入；格式不合法 → 提示格式；合法 → null */
+function validateEmail(value: string): string | null {
+  const mail = value.trim();
+  if (!mail) return '请输入学校邮箱';
+  if (!EMAIL_RE.test(mail)) return '请输入有效的学校邮箱地址';
+  return null;
+}
+
 /** 注册第一步：邮箱 + 密码。成功 → 即刻进入邮箱验证（第二步见 CheckEmailPage）。 */
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -32,6 +40,17 @@ export default function RegisterPage() {
   const [emailError, setEmailError] = React.useState<string | null>(null);
   const [passwordError, setPasswordError] = React.useState<string | null>(null);
   const [confirmError, setConfirmError] = React.useState<string | null>(null);
+
+  // 邮箱「输入即校验」：停止输入 600ms 视为完成输入，自动校验合法性/完整性。
+  // 字段为空时不催促（留到失焦/提交再报），已有错误且输入变得合法则由 onChange 即时清除。
+  React.useEffect(() => {
+    if (!email.trim()) {
+      setEmailError(null);
+      return;
+    }
+    const t = setTimeout(() => setEmailError(validateEmail(email)), 600);
+    return () => clearTimeout(t);
+  }, [email]);
 
   // 已登录守卫（与 /login 对称）：有效会话 → 回安全中心，避免已登录用户注册新账号
   // 静默覆盖现有 mfa.session（新用户在允许域名，signUp 会写入新会话）。
@@ -58,7 +77,8 @@ export default function RegisterPage() {
   // 字段级错误走行内红字（InputError），与字段无关的仍走 Toast。
   async function handleRegister() {
     const mail = email.trim().toLowerCase();
-    if (!EMAIL_RE.test(mail)) return setEmailError('请输入有效的学校邮箱地址');
+    const emailErr = validateEmail(email);
+    if (emailErr) return setEmailError(emailErr);
     if (password.length < 6) return setPasswordError('密码至少需要 6 位');
     if (password !== password2) return setConfirmError('两次输入的密码不一致，请重新输入');
     setBusy(true);
@@ -123,8 +143,10 @@ export default function RegisterPage() {
             value={email}
             onChange={(e) => {
               setEmail(e.target.value);
-              setEmailError(null);
+              // 已报错时边输边复检：一旦合法立刻收起红字（防抖校验兜底其余情况）
+              if (emailError && !validateEmail(e.target.value)) setEmailError(null);
             }}
+            onBlur={() => setEmailError(validateEmail(email))}
             slotProps={{ htmlInput: { autoComplete: 'email' } }}
             error={Boolean(emailError)}
           />
