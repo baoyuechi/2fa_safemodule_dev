@@ -52,21 +52,27 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
           py: 3,
         }}
       >
-        <Card variant="outlined" sx={{ width: '100%', maxWidth: 900, ...enterFadeUp }}>
-          <Stack direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch', minHeight: { md: 400 } }}>
+        {/* 卡片流式宽度（72vw，上限 1440px），随视口伸缩——Google 式 */}
+        <Card variant="outlined" sx={{ width: { xs: '100%', md: 'clamp(900px, 72vw, 1440px)' }, ...enterFadeUp }}>
+          <Stack
+            direction={{ xs: 'column', md: 'row' }}
+            sx={{ alignItems: 'stretch', minHeight: { md: 'clamp(400px, 43vw, 640px)' } }}
+          >
             {/* 左栏：Logo → 标题 → 账户选择器 顶对齐依次排布（Google 式） */}
             <Box
               sx={{
                 flex: 1,
-                p: { xs: 3, sm: 5 },
+                p: { xs: 3, md: '32px 56px' },
                 pr: { md: 2 },
                 display: 'flex',
                 flexDirection: 'column',
               }}
             >
               <Stack spacing={2}>
-                <BrandLogo size={40} />
-                <Typography variant="h1">{title}</Typography>
+                <BrandLogo size={56} />
+                <Typography variant="h1" sx={{ fontSize: { md: 'clamp(2.125rem, 1.2vw + 1.6rem, 2.75rem)' } }}>
+                  {title}
+                </Typography>
                 {subtitle && <Typography sx={{ color: 'text.secondary' }}>{subtitle}</Typography>}
                 {leftExtra}
               </Stack>
@@ -78,7 +84,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
               sx={[
                 {
                   flex: 1,
-                  p: { xs: 3, sm: 5 },
+                  p: { xs: 3, md: '32px 56px' },
                   pl: { md: 2 },
                   display: 'flex',
                   flexDirection: 'column',
