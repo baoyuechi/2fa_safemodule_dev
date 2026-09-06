@@ -10,6 +10,8 @@ import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
 import InputError from '../components/InputError';
 import type { InputErrorInfo } from '../components/InputError';
+import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
+import { scorePasswordSync } from '../lib/passwordStrength';
 import { useI18n } from '../i18n/LocaleContext';
 import {
   checkEmailDomain,
@@ -39,7 +41,7 @@ function validateEmail(value: string): 'register.emailEmpty' | 'register.emailIn
 /** 注册第一步：邮箱 + 密码。成功 → 即刻进入邮箱验证（第二步见 CheckEmailPage）。 */
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [password2, setPassword2] = React.useState('');
@@ -91,6 +93,9 @@ export default function RegisterPage() {
     const emailErr = validateEmail(email);
     if (emailErr) return setEmailError({ key: emailErr });
     if (password.length < 6) return setPasswordError({ key: 'register.passwordShort' });
+    // 强度门槛：zxcvbn score ≥ 2（「一般」）才放行；库未加载完则不拦截（强度条随后跟进）
+    const score = scorePasswordSync(password, locale);
+    if (score !== null && score < 2) return setPasswordError({ key: 'register.tooWeak' });
     if (password !== password2) return setConfirmError({ key: 'register.passwordMismatch' });
     setBusy(true);
     try {
@@ -186,6 +191,7 @@ export default function RegisterPage() {
             error={Boolean(passwordError)}
           />
           <InputError error={passwordError} />
+          <PasswordStrengthMeter password={password} />
         </Box>
         <Box>
           <TextField

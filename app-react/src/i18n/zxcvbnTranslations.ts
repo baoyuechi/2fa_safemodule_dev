@@ -1,0 +1,57 @@
+/**
+ * zxcvbn-ts 的中文翻译表（warnings / suggestions / timeEstimation 全量键）。
+ * en 直接用 @zxcvbn-ts/language-en 自带的官方翻译；zh 在此维护。
+ * 仅 warnings 与 suggestions 会展示给用户；timeEstimation 为库校验要求的完整键。
+ */
+export const zxcvbnTranslationsZh = {
+  warnings: {
+    straightRow: '密码里有成排的相邻按键（如 qwerty、asdf）',
+    keyPattern: '密码里有明显的键盘按键模式',
+    simpleRepeat: '有重复的字符或字词（如 aaa、abcabc）',
+    extendedRepeat: '有长段重复的内容（如 abababab）',
+    sequences: '有顺序排列的字符（如 abc、6543）',
+    recentYears: '避免使用最近或未来的年份',
+    dates: '日期容易被猜到',
+    topTen: '这是最常见的 10 个密码之一',
+    topHundred: '这是最常见的 100 个密码之一',
+    common: '这是很常见的密码',
+    similarToCommon: '这与常见密码非常相似',
+    wordByItself: '单个单词很容易被猜到',
+    namesByThemselves: '单独的名字或姓氏很容易被猜到',
+    commonNames: '常见的人名很容易被猜到',
+    userInputs: '密码里不要包含你的邮箱或个人信息',
+    pwned: '这个密码出现在公开泄露记录中，切勿使用',
+  },
+  suggestions: {
+    l33t: '用 @ 代替 a 这类变体对破解帮助不大',
+    reverseWords: '把单词倒过来写也防不住破解',
+    allUppercase: '全部大写和全部小写没有区别，试试大小写混合',
+    capitalization: '只大写首字母帮助不大，试试在词中间也用大写',
+    dates: '避免使用对你有特殊意义的日期和年份',
+    recentYears: '避免使用最近或未来的年份',
+    associatedYears: '避免使用与你相关的年份，比如生日',
+    sequences: '避免使用 abc、6543 这类顺序字符',
+    repeated: '避免重复使用字符和字词',
+    longerKeyboardPattern: '把键盘模式加长一些，并随机变换方向',
+    anotherWord: '再加几个互不相关的词、符号或数字',
+    useWords: '用多个互不相关的随机单词组合，效果最好',
+    noNeed: '不堆符号、数字和大写也能设出强密码',
+    pwned: '如果这是你在别处用过的密码，请立即更换',
+  },
+  timeEstimation: {
+    ltSecond: '不到一秒',
+    second: '约 1 秒',
+    seconds: '数秒',
+    minute: '约 1 分钟',
+    minutes: '数分钟',
+    hour: '约 1 小时',
+    hours: '数小时',
+    day: '约 1 天',
+    days: '数天',
+    month: '约 1 个月',
+    months: '数月',
+    year: '约 1 年',
+    years: '数年',
+    centuries: '数个世纪',
+  },
+};

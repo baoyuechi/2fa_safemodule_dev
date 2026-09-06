@@ -65,6 +65,12 @@ const zhMessages = {
   'register.signIn': '已有账号？直接登录',
   'register.registering': '注册中…',
   'register.emailUnusable': '该邮箱无法使用',
+  'register.tooWeak': '密码强度不足，请参考下方建议加强后再试',
+
+  'meter.weak': '弱',
+  'meter.fair': '一般',
+  'meter.strong': '强',
+  'meter.veryStrong': '很强',
 
   'checkEmail.title': '验证您的邮箱',
   'checkEmail.subtitle': '创建账号需依次完成：邮箱验证 → 手机号绑定（一次性）→ 指纹绑定',
@@ -242,6 +248,12 @@ const enMessages: Record<MessageKey, string> = {
   'register.signIn': 'Already have an account? Sign in',
   'register.registering': 'Creating account…',
   'register.emailUnusable': 'This email cannot be used',
+  'register.tooWeak': 'Password is too weak. Strengthen it using the suggestions below and try again',
+
+  'meter.weak': 'Weak',
+  'meter.fair': 'Fair',
+  'meter.strong': 'Strong',
+  'meter.veryStrong': 'Very strong',
 
   'checkEmail.title': 'Verify your email',
   'checkEmail.subtitle': 'Creating your account requires: email verification → phone linking (one-time) → fingerprint binding',
