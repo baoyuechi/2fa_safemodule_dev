@@ -18,6 +18,8 @@ const theme = createTheme({
       palette: {
         primary: { main: BRAND, contrastText: '#ffffff' },
         success: { main: FIDO_GREEN, contrastText: '#ffffff' },
+        // 错误红加深一档（M3 #b3261e），行内红字不再刺眼
+        error: { main: '#b3261e' },
         // Google 账号页浅蓝灰底 + 白卡片
         background: { default: '#f0f4f9', paper: '#ffffff' },
       },
@@ -26,6 +28,8 @@ const theme = createTheme({
       palette: {
         primary: { main: '#a8c7fa', contrastText: '#062e6f' },
         success: { main: '#6dd58c', contrastText: '#062b12' },
+        // 暗色错误用 M3 柔粉，降低刺眼度
+        error: { main: '#f2b8b5' },
         // 页面深灰 + 卡片纯黑（卡片比页面更暗，Google 深色的层次反转）
         background: { default: '#1b1b1d', paper: '#0e0e0f' },
         text: { primary: '#e3e3e3', secondary: '#9aa0a6' },

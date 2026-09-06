@@ -54,7 +54,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
       >
         <Card variant="outlined" sx={{ width: '100%', maxWidth: 900, ...enterFadeUp }}>
           <Stack direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch', minHeight: { md: 400 } }}>
-            {/* 左栏：Logo 固定卡片左上角，标题块垂直居中（Google 式：Logo 与标题间的大留白是设计） */}
+            {/* 左栏：Logo → 标题 → 账户选择器 顶对齐依次排布（Google 式） */}
             <Box
               sx={{
                 flex: 1,
@@ -64,14 +64,12 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
                 flexDirection: 'column',
               }}
             >
-              <BrandLogo size={40} />
-              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                <Stack spacing={2}>
-                  <Typography variant="h1">{title}</Typography>
-                  {subtitle && <Typography sx={{ color: 'text.secondary' }}>{subtitle}</Typography>}
-                  {leftExtra}
-                </Stack>
-              </Box>
+              <Stack spacing={2}>
+                <BrandLogo size={40} />
+                <Typography variant="h1">{title}</Typography>
+                {subtitle && <Typography sx={{ color: 'text.secondary' }}>{subtitle}</Typography>}
+                {leftExtra}
+              </Stack>
             </Box>
 
             {/* 右栏：内容块垂直居中（卡片中部）+ 动作行沉底 */}
