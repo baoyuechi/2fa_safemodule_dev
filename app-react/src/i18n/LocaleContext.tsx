@@ -3,12 +3,12 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { messages, type Locale, type MessageKey } from './messages';
 
 const LOCALE_KEY = 'mfa.locale';
-const HTML_LANG: Record<Locale, string> = { zh: 'zh-CN', en: 'en-US' };
+const HTML_LANG: Record<Locale, string> = { zh: 'zh-CN', en: 'en-US', es: 'es-ES', ja: 'ja-JP' };
 
 let currentLocale: Locale = 'zh';
 try {
   const stored = window.localStorage.getItem(LOCALE_KEY);
-  if (stored === 'zh' || stored === 'en') currentLocale = stored;
+  if (stored === 'zh' || stored === 'en' || stored === 'es' || stored === 'ja') currentLocale = stored;
 } catch {
   /* storage 不可用时保持默认 zh */
 }

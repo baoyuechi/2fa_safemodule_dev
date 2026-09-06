@@ -12,6 +12,8 @@ import type { Locale } from '../i18n/messages';
 const LOCALES: { code: Locale; native: string }[] = [
   { code: 'zh', native: '简体中文' },
   { code: 'en', native: 'English' },
+  { code: 'es', native: 'Español' },
+  { code: 'ja', native: '日本語' },
 ];
 
 /** 语言切换按钮：页脚版（显示当前语言名 + 下拉箭头）或图标版（顶栏紧凑布局）。 */

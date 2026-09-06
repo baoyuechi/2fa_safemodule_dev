@@ -5,7 +5,6 @@
  */
 import type { Locale } from '../i18n/messages';
 import { zxcvbnTranslationsZh } from '../i18n/zxcvbnTranslations';
-
 export interface PasswordStrengthResult {
   /** 0 很弱 → 4 很强（zxcvbn 标准五档） */
   score: number;
@@ -30,15 +29,23 @@ async function loadZxcvbn(locale: Locale): Promise<ZxcvbnFactoryLike> {
   if (loadingPromise && pendingLocale === locale) return loadingPromise;
   pendingLocale = locale;
   loadingPromise = (async () => {
-    const [{ ZxcvbnFactory }, common, en] = await Promise.all([
+    const [{ ZxcvbnFactory }, common, en, esEs, ja] = await Promise.all([
       import('@zxcvbn-ts/core'),
       import('@zxcvbn-ts/language-common'),
       import('@zxcvbn-ts/language-en'),
+      import('@zxcvbn-ts/language-es-es'),
+      import('@zxcvbn-ts/language-ja'),
     ]);
+    const translations = {
+      zh: zxcvbnTranslationsZh,
+      en: en.translations,
+      es: esEs.translations,
+      ja: ja.translations,
+    }[locale];
     const factory = new ZxcvbnFactory({
-      translations: locale === 'zh' ? zxcvbnTranslationsZh : en.translations,
+      translations,
       graphs: common.adjacencyGraphs,
-      dictionary: { ...common.dictionary, ...en.dictionary },
+      dictionary: { ...common.dictionary, ...en.dictionary, ...esEs.dictionary, ...ja.dictionary },
     }) as unknown as ZxcvbnFactoryLike;
     factories.set(locale, factory);
     return factory;
