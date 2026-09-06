@@ -1,6 +1,6 @@
 /**
  * 服务条款内容（四语）。结构参考通用服务条款骨架，
- * 内容为 isaSpectrum 留言板 + MFA 认证模块量身撰写。
+ * 内容为 isaSpectrum 网站整体撰写。
  * 新增键请同步四种语言；缺失语言渲染时回落英文由 TermsPage 处理。
  */
 import type { Locale } from './messages';
@@ -19,7 +19,7 @@ export interface TermsContent {
 const zh: TermsContent = {
   updated: '2026 年 9 月 6 日',
   intro:
-    '本条款适用于 isaSpectrum 留言板网站及其多因素认证（MFA）模块。注册账号或使用本服务，即表示你已阅读并同意本条款；如不同意，请勿使用本服务。',
+    '本条款适用于 isaSpectrum 留言板网站。注册账号或使用本服务，即表示你已阅读并同意本条款；如不同意，请勿使用本服务。',
   sections: [
     {
       title: '服务提供方',
@@ -90,7 +90,7 @@ const zh: TermsContent = {
 const en: TermsContent = {
   updated: 'September 6, 2026',
   intro:
-    'These terms apply to the isaSpectrum message board website and its multi-factor authentication (MFA) module. By creating an account or using the service, you agree to these terms. If you do not agree, please do not use the service.',
+    'These terms apply to the isaSpectrum message board website. By creating an account or using the service, you agree to these terms. If you do not agree, please do not use the service.',
   sections: [
     {
       title: 'Service provider',
@@ -161,7 +161,7 @@ const en: TermsContent = {
 const es: TermsContent = {
   updated: '6 de septiembre de 2026',
   intro:
-    'Estos términos aplican al sitio del tablón isaSpectrum y a su módulo de autenticación multifactor (MFA). Al crear una cuenta o usar el servicio, aceptas estos términos. Si no los aceptas, no uses el servicio.',
+    'Estos términos aplican al sitio del tablón isaSpectrum. Al crear una cuenta o usar el servicio, aceptas estos términos. Si no los aceptas, no uses el servicio.',
   sections: [
     {
       title: 'Proveedor del servicio',
@@ -232,7 +232,7 @@ const es: TermsContent = {
 const ja: TermsContent = {
   updated: '2026 年 9 月 6 日',
   intro:
-    '本規約は、isaSpectrum 掲示板サイトおよびその多要素認証（MFA）モジュールに適用されます。アカウントを作成または本サービスを利用することで、本規約に同意したものとみなされます。同意できない場合は、本サービスをご利用いただけません。',
+    '本規約は、isaSpectrum 掲示板サイトに適用されます。アカウントを作成または本サービスを利用することで、本規約に同意したものとみなされます。同意できない場合は、本サービスをご利用いただけません。',
   sections: [
     {
       title: 'サービスの提供者',

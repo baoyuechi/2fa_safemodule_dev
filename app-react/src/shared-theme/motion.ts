@@ -29,6 +29,13 @@ export const stepFadeUp = {
   animation: `mfaFadeUp 0.3s ${EASE_EMPHASIS} both`,
 };
 
+/** 瀑布式级联入场：按延迟依次向下铺开（文档页各节用递增 delay） */
+export const cascadeUp = (delaySeconds: number) => ({
+  ...fadeUpKeyframes,
+  animation: `mfaFadeUp 0.55s ${EASE_EMPHASIS} both`,
+  animationDelay: `${delaySeconds}s`,
+});
+
 /** 消息条入场：从上方轻弹入 */
 export const toastIn = {
   ...fadeUpKeyframes,
