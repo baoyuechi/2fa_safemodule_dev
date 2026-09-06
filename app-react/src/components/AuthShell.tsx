@@ -65,7 +65,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
               }}
             >
               <Stack spacing={2}>
-                <BrandLogo size={40} />
+                <BrandLogo size={48} />
                 <Typography variant="h1">{title}</Typography>
                 {subtitle && <Typography sx={{ color: 'text.secondary' }}>{subtitle}</Typography>}
                 {leftExtra}
