@@ -2,6 +2,7 @@ import * as React from 'react';
 import Typography from '@mui/material/Typography';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import AuthShell from '../components/AuthShell';
+import { useI18n } from '../i18n/LocaleContext';
 import {
   confirmEmailWithTokenHash,
   handleError,
@@ -38,6 +39,7 @@ function parseHash(hash: string): Record<string, string> | null {
 export default function ConfirmEmailPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useI18n();
   const [params] = useSearchParams();
   const doneRef = React.useRef(false);
 
@@ -57,7 +59,7 @@ export default function ConfirmEmailPage() {
       };
       saveSession(session);
       const email = (session?.user as { email?: string } | undefined)?.email ?? hash.email;
-      toast('邮箱验证成功', 'success');
+      toast(t('confirmEmail.verified'), 'success');
       navigate('/register/phone', { state: email ? { email } : undefined, replace: true });
       return;
     }
@@ -65,7 +67,7 @@ export default function ConfirmEmailPage() {
     // B. token_hash 形链接
     const tokenHash = params.get('token_hash');
     if (!tokenHash || params.get('type') !== 'signup') {
-      toast('验证链接无效或已过期，请重新注册', 'error');
+      toast(t('confirmEmail.invalidLink'), 'error');
       navigate('/register', { replace: true });
       return;
     }
@@ -73,7 +75,7 @@ export default function ConfirmEmailPage() {
       let s: MfaSession | null = null;
       try {
         s = await confirmEmailWithTokenHash(tokenHash);
-        toast('邮箱验证成功', 'success');
+        toast(t('confirmEmail.verified'), 'success');
         saveSession(s);
       } catch (e) {
         handleError(e);
@@ -82,11 +84,11 @@ export default function ConfirmEmailPage() {
         navigate('/register/phone', { state: e ? { email: e } : undefined, replace: true });
       }
     })();
-  }, [navigate, location.hash, params]);
+  }, [navigate, location.hash, params, t]);
 
   return (
-    <AuthShell title="正在验证您的邮箱…" subtitle="正在验证邮箱，请稍候">
-      <Typography variant="body2" sx={{ color: 'text.secondary' }}>正在验证邮箱…</Typography>
+    <AuthShell title={t('confirmEmail.title')} subtitle={t('confirmEmail.subtitle')}>
+      <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('confirmEmail.body')}</Typography>
     </AuthShell>
   );
 }

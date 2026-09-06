@@ -8,6 +8,8 @@ import { Link as RouterLink, useLocation, useNavigate } from 'react-router-dom';
 import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
 import InputError from '../components/InputError';
+import type { InputErrorInfo } from '../components/InputError';
+import { useI18n } from '../i18n/LocaleContext';
 import { confirmEmailWithCode, getSession, handleError, resendEmail, saveSession, toast } from '../api/mfaClient';
 
 interface CheckEmailState {
@@ -18,6 +20,7 @@ interface CheckEmailState {
 export default function CheckEmailPage() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { t } = useI18n();
   // 邮箱优先取 location.state（RegisterPage 传递）；刷新后 state 丢失 → 回退 sessionStorage，
   // 避免用户被弹回注册页重填。
   const [email] = React.useState(
@@ -27,7 +30,7 @@ export default function CheckEmailPage() {
   const [busy, setBusy] = React.useState(false);
   const [sending, setSending] = React.useState(false);
   // 行内字段错误（InputError 红字），输入即清除
-  const [codeError, setCodeError] = React.useState<string | null>(null);
+  const [codeError, setCodeError] = React.useState<InputErrorInfo | null>(null);
 
   // 会话已存在（本浏览器已完成邮箱验证）→ 直达手机号绑定；否则无邮箱 → 回注册
   React.useEffect(() => {
@@ -45,7 +48,7 @@ export default function CheckEmailPage() {
     setSending(true);
     try {
       await resendEmail(email);
-      toast('验证邮件已重新发送', 'success');
+      toast(t('checkEmail.resent'), 'success');
     } catch (e) {
       handleError(e);
     } finally {
@@ -56,16 +59,16 @@ export default function CheckEmailPage() {
   // 邮箱验证：输入邮件中的 6 位验证码 → 换标准会话 → 手机号绑定。
   // 码相关错误在验证码框下方行内提示（Google 式），其余仍走 Toast。
   async function handleVerify() {
-    if (!/^\d{6}$/.test(code.trim())) return setCodeError('请输入邮件中的 6 位数字验证码');
+    if (!/^\d{6}$/.test(code.trim())) return setCodeError({ key: 'checkEmail.codeInvalid' });
     setBusy(true);
     try {
       saveSession(await confirmEmailWithCode(email, code.trim()));
-      toast('邮箱验证成功', 'success');
+      toast(t('checkEmail.verified'), 'success');
       navigate('/register/phone', { replace: true });
     } catch (e) {
       const err = e as { code?: string; message?: string };
-      if (err?.code === 'OTP_EXPIRED') setCodeError(err.message ?? '验证码已过期，请重新获取');
-      else setCodeError('验证码不正确，请检查后重试'); // 防枚举：码错误统一文案
+      if (err?.code === 'OTP_EXPIRED') setCodeError({ key: 'error.otpExpired' });
+      else setCodeError({ key: 'checkEmail.codeWrong' }); // 防枚举：码错误统一文案
     } finally {
       setBusy(false);
     }
@@ -73,36 +76,36 @@ export default function CheckEmailPage() {
 
   return (
     <AuthShell
-      title="验证您的邮箱"
-      subtitle="创建账号需依次完成：邮箱验证 → 手机号绑定（一次性）→ 指纹绑定"
+      title={t('checkEmail.title')}
+      subtitle={t('checkEmail.subtitle')}
       leftExtra={email.trim() ? <EmailPill email={email} /> : undefined}
       transitionKey="check-email"
       actions={
         <AuthActions
           secondary={
             <Button variant="text" onClick={handleResend} disabled={sending}>
-              {sending ? '发送中…' : '重新发送验证邮件'}
+              {sending ? t('checkEmail.sending') : t('checkEmail.resend')}
             </Button>
           }
           primary={
             <Button variant="contained" size="large" onClick={handleVerify} disabled={busy}>
-              {busy ? '验证中…' : '验证'}
+              {busy ? t('checkEmail.verifying') : t('checkEmail.verify')}
             </Button>
           }
         />
       }
     >
       <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-        我们已向{' '}
+        {t('checkEmail.introPrefix')}{' '}
         <Typography component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>
-          {email.trim() || '您的邮箱'}
+          {email.trim() || t('checkEmail.yourEmail')}
         </Typography>{' '}
-        发送了一封验证邮件，请把邮件中的 6 位验证码填在下方。
+        {t('checkEmail.introSuffix')}
       </Typography>
 
       <Box>
         <TextField
-          label="6 位验证码"
+          label={t('checkEmail.codeLabel')}
           value={code}
           onChange={(e) => {
             setCode(e.target.value);
@@ -112,15 +115,15 @@ export default function CheckEmailPage() {
           slotProps={{ htmlInput: { inputMode: 'numeric', maxLength: 6 } }}
           error={Boolean(codeError)}
         />
-        <InputError message={codeError} />
+        <InputError error={codeError} />
       </Box>
 
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        本地开发：验证邮件在本地邮箱面板查看 → http://127.0.0.1:54324（Mailpit）。若点击了邮件内的验证链接，页面会自动继续，无需再输码。
+        {t('checkEmail.localDev')}
       </Typography>
       <Typography variant="caption" component="div" sx={{ color: 'text.secondary' }}>
         <Link component={RouterLink} to="/register" underline="hover">
-          邮箱填写有误？返回上一步
+          {t('checkEmail.goBack')}
         </Link>
       </Typography>
     </AuthShell>

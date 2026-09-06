@@ -7,6 +7,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { useNavigate } from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
 import PageLoader from '../components/PageLoader';
+import { useI18n } from '../i18n/LocaleContext';
 import {
   clearSession,
   fetchSessionUser,
@@ -19,6 +20,7 @@ import type { MfaUser } from '../api/mfaClient';
 /** 手机号绑定信息页：说明注册时已一次性绑定（FR-2），不参与日常登录。 */
 export default function PhonePage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [user, setUser] = React.useState<MfaUser | null>(null);
 
   React.useEffect(() => {
@@ -45,7 +47,7 @@ export default function PhonePage() {
       /* 登出失败也照常清本地 */
     } finally {
       clearSession();
-      toast('已退出登录', 'info');
+      toast(t('common.signedOut'), 'info');
       navigate('/login', { replace: true });
     }
   }
@@ -54,20 +56,20 @@ export default function PhonePage() {
 
   return (
     <AccountShell active="phone" user={user} onLogout={doLogout}>
-      <Typography variant="h1">手机号绑定</Typography>
+      <Typography variant="h1">{t('phone.title')}</Typography>
 
       <Card variant="outlined" sx={{ px: { xs: 2.5, sm: 4 }, py: 3 }}>
         <Stack direction="row" spacing={2} alignItems="flex-start">
           <SmsRoundedIcon sx={{ fontSize: 36, color: 'success.main' }} />
           <Stack spacing={1}>
-            <Typography variant="h2">注册时已完成一次性绑定</Typography>
+            <Typography variant="h2">{t('phone.boundTitle')}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              你的手机号在注册时经短信验证码完成绑定，仅用于账号恢复与备用验证，不参与日常登录，也不在页面显示完整号码。
+              {t('phone.boundDesc')}
             </Typography>
             <Stack direction="row" spacing={1} alignItems="center">
               <CheckCircleRoundedIcon color="success" sx={{ fontSize: 18 }} />
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                已绑定 · 验证码 5 分钟内有效，每个手机号每天最多接收 5 条
+                {t('phone.linked')}
               </Typography>
             </Stack>
           </Stack>

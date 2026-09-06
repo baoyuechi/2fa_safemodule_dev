@@ -9,6 +9,8 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
 import InputError from '../components/InputError';
+import type { InputErrorInfo } from '../components/InputError';
+import { useI18n } from '../i18n/LocaleContext';
 import {
   checkEmailDomain,
   clearSession,
@@ -21,25 +23,31 @@ import {
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-/** 邮箱校验：空 → 提示输入；格式不合法 → 提示格式；合法 → null */
-function validateEmail(value: string): string | null {
-  const mail = value.trim();
-  if (!mail) return '请输入学校邮箱';
-  if (!EMAIL_RE.test(mail)) return '请输入有效的学校邮箱地址';
+/**
+ * 邮箱校验：空 → 提示输入；格式不合法 → 提示格式；非学校域名 → 提示域名；合法 → null。
+ * 返回 i18n 消息键（存入错误 state，渲染时才取词，语言切换后自动重译）；
+ * 域名判断大小写不敏感（与服务端语义一致）。
+ */
+function validateEmail(value: string): 'register.emailEmpty' | 'register.emailInvalid' | 'register.emailDomainOnly' | null {
+  const mail = value.trim().toLowerCase();
+  if (!mail) return 'register.emailEmpty';
+  if (!EMAIL_RE.test(mail)) return 'register.emailInvalid';
+  if (!mail.endsWith('@isawuhan.com')) return 'register.emailDomainOnly';
   return null;
 }
 
 /** 注册第一步：邮箱 + 密码。成功 → 即刻进入邮箱验证（第二步见 CheckEmailPage）。 */
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [password2, setPassword2] = React.useState('');
   const [busy, setBusy] = React.useState(false);
-  // 行内字段错误（InputError 红字），输入即清除
-  const [emailError, setEmailError] = React.useState<string | null>(null);
-  const [passwordError, setPasswordError] = React.useState<string | null>(null);
-  const [confirmError, setConfirmError] = React.useState<string | null>(null);
+  // 行内字段错误（InputError 红字），输入即清除。存 i18n 键而非译文：语言切换后自动重译。
+  const [emailError, setEmailError] = React.useState<InputErrorInfo | null>(null);
+  const [passwordError, setPasswordError] = React.useState<InputErrorInfo | null>(null);
+  const [confirmError, setConfirmError] = React.useState<InputErrorInfo | null>(null);
 
   // 邮箱「输入即校验」：停止输入 600ms 视为完成输入，自动校验合法性/完整性。
   // 字段为空时不催促（留到失焦/提交再报），已有错误且输入变得合法则由 onChange 即时清除。
@@ -48,8 +56,11 @@ export default function RegisterPage() {
       setEmailError(null);
       return;
     }
-    const t = setTimeout(() => setEmailError(validateEmail(email)), 600);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => {
+      const key = validateEmail(email);
+      setEmailError(key ? { key } : null);
+    }, 600);
+    return () => clearTimeout(timer);
   }, [email]);
 
   // 已登录守卫（与 /login 对称）：有效会话 → 回安全中心，避免已登录用户注册新账号
@@ -78,21 +89,21 @@ export default function RegisterPage() {
   async function handleRegister() {
     const mail = email.trim().toLowerCase();
     const emailErr = validateEmail(email);
-    if (emailErr) return setEmailError(emailErr);
-    if (password.length < 6) return setPasswordError('密码至少需要 6 位');
-    if (password !== password2) return setConfirmError('两次输入的密码不一致，请重新输入');
+    if (emailErr) return setEmailError({ key: emailErr });
+    if (password.length < 6) return setPasswordError({ key: 'register.passwordShort' });
+    if (password !== password2) return setConfirmError({ key: 'register.passwordMismatch' });
     setBusy(true);
     try {
       await checkEmailDomain({ email: mail });
       await signUp(mail, password);
       // 邮箱持久化：state 刷新即丢，写入 sessionStorage 供 CheckEmail 刷新后回退
       sessionStorage.setItem('mfa.pendingEmail', mail);
-      toast('注册成功，验证邮件已发送', 'success');
+      toast(t('register.success'), 'success');
       navigate('/register/check-email', { state: { email: mail }, replace: true });
     } catch (e) {
       const err = e as { code?: string; message?: string };
       if (err?.code === 'DOMAIN_NOT_ALLOWED' || err?.code === 'EMAIL_TAKEN') {
-        setEmailError(err.message ?? '该邮箱无法使用');
+        setEmailError({ key: err.code === 'EMAIL_TAKEN' ? 'error.emailTaken' : 'error.domainNotAllowed' });
         setBusy(false);
       } else {
         handleError(e);
@@ -103,20 +114,20 @@ export default function RegisterPage() {
 
   return (
     <AuthShell
-      title="创建您的账号"
-      subtitle="仅限学校邮箱。注册后将依次完成邮箱验证、手机号绑定与指纹绑定（约 1 分钟）。"
+      title={t('register.title')}
+      subtitle={t('register.subtitle')}
       leftExtra={email.trim() ? <EmailPill email={email.trim().toLowerCase()} /> : undefined}
       transitionKey="register"
       actions={
         <AuthActions
           secondary={
             <Link component={RouterLink} to="/login" underline="hover">
-              已有账号？直接登录
+              {t('register.signIn')}
             </Link>
           }
           primary={
             <Button type="submit" form="register-form" variant="contained" size="large" disabled={busy}>
-              {busy ? '注册中…' : '下一步'}
+              {busy ? t('register.registering') : t('common.next')}
             </Button>
           }
         />
@@ -135,7 +146,7 @@ export default function RegisterPage() {
         {/* Box 包裹：避免 InputError 成为 Stack 直接子元素而被 spacing 撑开间距 */}
         <Box>
           <TextField
-            label="学校邮箱"
+            label={t('common.emailLabel')}
             type="email"
             required
             autoFocus
@@ -146,24 +157,26 @@ export default function RegisterPage() {
               // 已报错时边输边复检：一旦合法立刻收起红字（防抖校验兜底其余情况）
               if (emailError && !validateEmail(e.target.value)) setEmailError(null);
             }}
-            onBlur={() => setEmailError(validateEmail(email))}
+            onBlur={() => {
+              const key = validateEmail(email);
+              setEmailError(key ? { key } : null);
+            }}
             slotProps={{ htmlInput: { autoComplete: 'email' } }}
             error={Boolean(emailError)}
           />
-          {emailError ? (
-            <InputError message={emailError} />
-          ) : (
+          <InputError error={emailError} />
+          {!emailError && (
             <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 0.25 }}>
-              仅支持学校邮箱（@isawuhan.com）
+              {t('register.emailDomainOnly')}
             </Typography>
           )}
         </Box>
         <Box>
           <TextField
-            label="设置密码"
+            label={t('register.passwordLabel')}
             type="password"
             required
-            placeholder="至少 6 位"
+            placeholder={t('register.passwordPlaceholder')}
             value={password}
             onChange={(e) => {
               setPassword(e.target.value);
@@ -172,14 +185,14 @@ export default function RegisterPage() {
             slotProps={{ htmlInput: { autoComplete: 'new-password', minLength: 6 } }}
             error={Boolean(passwordError)}
           />
-          <InputError message={passwordError} />
+          <InputError error={passwordError} />
         </Box>
         <Box>
           <TextField
-            label="确认密码"
+            label={t('register.confirmLabel')}
             type="password"
             required
-            placeholder="再次输入密码"
+            placeholder={t('register.confirmPlaceholder')}
             value={password2}
             onChange={(e) => {
               setPassword2(e.target.value);
@@ -188,7 +201,7 @@ export default function RegisterPage() {
             slotProps={{ htmlInput: { autoComplete: 'new-password', minLength: 6 } }}
             error={Boolean(confirmError)}
           />
-          <InputError message={confirmError} />
+          <InputError error={confirmError} />
         </Box>
       </Stack>
     </AuthShell>

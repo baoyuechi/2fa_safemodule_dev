@@ -16,6 +16,7 @@ import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
 import PageLoader from '../components/PageLoader';
+import { useI18n } from '../i18n/LocaleContext';
 import {
   clearSession,
   fetchSessionUser,
@@ -29,6 +30,7 @@ import type { MfaUser } from '../api/mfaClient';
 /** 图 1 风格的「安全性与登录」账户页：登录选项分组卡 + 状态 Chip + 彩色圆标侧边栏。 */
 export default function SecurityPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [user, setUser] = React.useState<MfaUser | null>(null);
   const [enrolled, setEnrolled] = React.useState(false);
   const [busyLogout, setBusyLogout] = React.useState(false);
@@ -59,7 +61,7 @@ export default function SecurityPage() {
       /* 登出失败也照常清本地 */
     } finally {
       clearSession();
-      toast('已退出登录', 'info');
+      toast(t('common.signedOut'), 'info');
       navigate('/login', { replace: true });
     }
   }
@@ -68,22 +70,20 @@ export default function SecurityPage() {
 
   return (
     <AccountShell active="security" user={user} onLogout={doLogout}>
-      <Typography variant="h1">安全性与登录</Typography>
+      <Typography variant="h1">{t('nav.security')}</Typography>
 
       {/* 安全状态卡 */}
       <Card variant="outlined" sx={{ px: { xs: 2.5, sm: 4 }, py: 3 }}>
         <Stack direction="row" spacing={2} alignItems="flex-start">
           <VerifiedUserRoundedIcon sx={{ fontSize: 36, color: enrolled ? 'success.main' : 'text.secondary' }} />
           <Box>
-            <Typography variant="h2">{enrolled ? '让您的账号安全无虞' : '完成一步，让您的账号安全无虞'}</Typography>
+            <Typography variant="h2">{enrolled ? t('security.protected') : t('security.protectOneStep')}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-              {enrolled
-                ? '通行密钥已绑定，你现在可以参与发言。建议再绑定一台设备，以防设备丢失。'
-                : '绑定通行密钥（约 30 秒）后即可参与发言；未绑定的账号只能浏览。'}
+              {enrolled ? t('security.enrolledDesc') : t('security.notEnrolledDesc')}
             </Typography>
             {!enrolled && (
               <Button component={RouterLink} to="/enroll" variant="contained" size="small" sx={{ mt: 1.5, borderRadius: 999 }}>
-                去绑定通行密钥
+                {t('security.setupPasskey')}
               </Button>
             )}
           </Box>
@@ -92,9 +92,9 @@ export default function SecurityPage() {
 
       {/* 登录选项 */}
       <Box>
-        <Typography variant="h2">登录选项</Typography>
+        <Typography variant="h2">{t('security.signInOptions')}</Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-          请务必及时更新这些信息，确保始终都能访问自己的账号
+          {t('security.keepUpdated')}
         </Typography>
       </Box>
       <Card variant="outlined" sx={{ py: 0.5 }}>
@@ -105,13 +105,13 @@ export default function SecurityPage() {
         >
           <FingerprintRoundedIcon sx={{ mr: 2.5, color: 'text.secondary' }} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography>通行密钥</Typography>
+            <Typography>{t('security.passkeyName')}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              {enrolled ? '已绑定，可用于免密码直登（Touch ID / Windows Hello）' : '尚未绑定。完成后即可参与发言'}
+              {enrolled ? t('security.passkeyLinked') : t('security.passkeyNotLinked')}
             </Typography>
           </Box>
           <Chip
-            label={enrolled ? '已启用' : '未绑定'}
+            label={enrolled ? t('security.enabled') : t('security.notLinked')}
             color={enrolled ? 'success' : 'warning'}
             size="small"
             variant={enrolled ? 'filled' : 'outlined'}
@@ -123,35 +123,35 @@ export default function SecurityPage() {
         <ListItemButton sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0, cursor: 'default' }}>
           <LockRoundedIcon sx={{ mr: 2.5, color: 'text.secondary' }} />
           <Box sx={{ flex: 1 }}>
-            <Typography>邮箱密码</Typography>
+            <Typography>{t('security.passwordName')}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              在没有指纹识别的设备上，可通过邮箱密码登录
+              {t('security.passwordDesc')}
             </Typography>
           </Box>
-          <Chip label="已设置" size="small" variant="outlined" sx={{ mr: 1 }} />
+          <Chip label={t('security.passwordSet')} size="small" variant="outlined" sx={{ mr: 1 }} />
         </ListItemButton>
         <Divider component="li" />
         <ListItemButton sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}>
           <SmsRoundedIcon sx={{ mr: 2.5, color: 'success.main' }} />
           <Box sx={{ flex: 1 }}>
-            <Typography>手机号绑定</Typography>
+            <Typography>{t('security.phoneName')}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              注册时绑定，仅用于账号恢复与备用验证，不参与日常登录
+              {t('security.phoneDesc')}
             </Typography>
           </Box>
-          <Chip label="注册时绑定" size="small" variant="outlined" sx={{ mr: 1 }} />
+          <Chip label={t('security.phoneLinked')} size="small" variant="outlined" sx={{ mr: 1 }} />
         </ListItemButton>
       </Card>
 
       {/* 您的账号 */}
       <Box>
-        <Typography variant="h2">您的账号</Typography>
+        <Typography variant="h2">{t('security.yourAccount')}</Typography>
       </Box>
       <Card variant="outlined" sx={{ py: 0.5 }}>
         <ListItemButton sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0, cursor: 'default' }}>
           <MailRoundedIcon sx={{ mr: 2.5, color: 'text.secondary' }} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography>学校邮箱</Typography>
+            <Typography>{t('security.schoolEmail')}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary', overflowWrap: 'anywhere' }}>
               {user.email}
             </Typography>
@@ -160,9 +160,9 @@ export default function SecurityPage() {
         <Divider component="li" />
         <ListItemButton onClick={doLogout} disabled={busyLogout} sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}>
           <Box sx={{ flex: 1 }}>
-            <Typography>退出登录</Typography>
+            <Typography>{t('auth.signOut')}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              清除本机会话并返回登录页
+              {t('security.signOutDesc')}
             </Typography>
           </Box>
         </ListItemButton>

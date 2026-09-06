@@ -4,6 +4,7 @@ import IconButton from '@mui/material/IconButton';
 import Tooltip from '@mui/material/Tooltip';
 import DarkModeOutlinedIcon from '@mui/icons-material/DarkModeOutlined';
 import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
+import { useI18n } from '../i18n/LocaleContext';
 
 /**
  * 明暗切换：显式浅/深 ↔ 跟随系统。
@@ -12,6 +13,7 @@ import LightModeOutlinedIcon from '@mui/icons-material/LightModeOutlined';
  */
 export default function ColorModeIconDropdown() {
   const { mode, systemMode, setMode } = useColorScheme();
+  const { t } = useI18n();
   const [mounted, setMounted] = React.useState(false);
   React.useEffect(() => setMounted(true), []);
   if (!mounted) return null; // SSR/首帧避免 hydration 图标闪烁
@@ -30,7 +32,7 @@ export default function ColorModeIconDropdown() {
   }
 
   // 标签描述「点击后的状态」：跟随系统态 → 固化到目标显式模式；显式态 → 转跟随系统
-  const label = mode === 'system' ? (target === 'dark' ? '深色模式' : '浅色模式') : '跟随系统';
+  const label = mode === 'system' ? (target === 'dark' ? t('mode.dark') : t('mode.light')) : t('mode.system');
 
   return (
     <Tooltip title={label}>

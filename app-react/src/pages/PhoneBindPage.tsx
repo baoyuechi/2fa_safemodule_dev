@@ -9,7 +9,9 @@ import { useNavigate } from 'react-router-dom';
 import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
 import InputError from '../components/InputError';
+import type { InputErrorInfo } from '../components/InputError';
 import PageLoader from '../components/PageLoader';
+import { useI18n } from '../i18n/LocaleContext';
 import {
   clearSession,
   fetchSessionUser,
@@ -27,6 +29,7 @@ const PHONE_RE = /^1[3-9]\d{9}$/;
 /** 注册第三步（必选·FR-2）：邮箱验证通过后强制完成一次性手机号绑定。 */
 export default function PhoneBindPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [user, setUser] = React.useState<MfaUser | null>(null);
   const [phone, setPhone] = React.useState('');
   const [otpCode, setOtpCode] = React.useState('');
@@ -34,8 +37,8 @@ export default function PhoneBindPage() {
   const [sendingOtp, setSendingOtp] = React.useState(false);
   const [busy, setBusy] = React.useState(false);
   // 行内字段错误（InputError 红字），输入即清除
-  const [phoneError, setPhoneError] = React.useState<string | null>(null);
-  const [codeError, setCodeError] = React.useState<string | null>(null);
+  const [phoneError, setPhoneError] = React.useState<InputErrorInfo | null>(null);
+  const [codeError, setCodeError] = React.useState<InputErrorInfo | null>(null);
 
   // 会话守卫：未确认邮箱 / 会话失效 → 回登录页（邮箱验证成功才有会话）
   React.useEffect(() => {
@@ -62,17 +65,17 @@ export default function PhoneBindPage() {
 
   async function handleSendOtp() {
     const normalized = phone.replace(/[\s-]/g, '');
-    if (!PHONE_RE.test(normalized)) return setPhoneError('请输入正确的 11 位手机号');
+    if (!PHONE_RE.test(normalized)) return setPhoneError({ key: 'phoneBind.phoneInvalid' });
     if (sendingOtp || countdown > 0) return; // 请求飞行中禁用，防双击双发耗 24h 限 5 条配额
     setPhoneError(null);
     setSendingOtp(true);
     try {
       await sendOtp(normalized);
-      toast('验证码已发送（模拟短信，码在 edge 日志）', 'success');
+      toast(t('phoneBind.otpSent'), 'success');
       setCountdown(60);
     } catch (e) {
       const err = e as { code?: string; message?: string };
-      if (err?.code === 'PHONE_TAKEN') setPhoneError(err.message ?? '该手机号已被使用');
+      if (err?.code === 'PHONE_TAKEN') setPhoneError({ key: 'phoneBind.phoneTaken' });
       else handleError(e); // RATE_LIMITED 等与字段无关 → Toast
     } finally {
       setSendingOtp(false);
@@ -82,20 +85,20 @@ export default function PhoneBindPage() {
   // 验证 + 一次性绑定：verify-otp 签发票据 → phone/bind 核销并写库 → 前往指纹绑定
   async function handleVerifyAndBind() {
     const normalized = phone.replace(/[\s-]/g, '');
-    if (!PHONE_RE.test(normalized)) return setPhoneError('请输入正确的 11 位手机号');
-    if (!/^\d{6}$/.test(otpCode.trim())) return setCodeError('请输入 6 位数字验证码');
+    if (!PHONE_RE.test(normalized)) return setPhoneError({ key: 'phoneBind.phoneInvalid' });
+    if (!/^\d{6}$/.test(otpCode.trim())) return setCodeError({ key: 'phoneBind.codeInvalid' });
     const session = getSession();
     if (!session?.access_token) return;
     setBusy(true);
     try {
       const { otpToken } = await verifyOtp(normalized, otpCode.trim());
-      if (!otpToken) throw new Error('缺少一次性票据');
+      if (!otpToken) throw new Error(t('phoneBind.missingToken'));
       await phoneBind(session.access_token, otpToken, normalized);
-      toast('手机号绑定成功', 'success');
+      toast(t('phoneBind.success'), 'success');
       navigate('/enroll', { replace: true });
     } catch (e) {
       const err = e as { code?: string; message?: string };
-      if (err?.code === 'OTP_EXPIRED') setCodeError(err.message ?? '验证码已过期，请重新获取');
+      if (err?.code === 'OTP_EXPIRED') setCodeError({ key: 'error.otpExpired' });
       else handleError(e);
     } finally {
       setBusy(false);
@@ -106,8 +109,8 @@ export default function PhoneBindPage() {
 
   return (
     <AuthShell
-      title="绑定手机号"
-      subtitle="注册必选步骤。手机号仅用于账号恢复与备用验证，不参与日常登录。"
+      title={t('phoneBind.title')}
+      subtitle={t('phoneBind.subtitle')}
       leftExtra={user?.email ? <EmailPill email={user.email} /> : undefined}
       transitionKey="phone-bind"
       actions={
@@ -121,12 +124,12 @@ export default function PhoneBindPage() {
                 navigate('/register', { replace: true });
               }}
             >
-              退出，换一个邮箱注册
+              {t('phoneBind.switchEmail')}
             </Link>
           }
           primary={
             <Button variant="contained" size="large" onClick={handleVerifyAndBind} disabled={busy}>
-              {busy ? '验证绑定中…' : '验证并绑定'}
+              {busy ? t('phoneBind.binding') : t('phoneBind.bindButton')}
             </Button>
           }
         />
@@ -135,7 +138,7 @@ export default function PhoneBindPage() {
       <Stack spacing={2}>
         <Box>
           <TextField
-            label="手机号"
+            label={t('phoneBind.phoneLabel')}
             type="tel"
             placeholder="13x xxxx xxxx"
             value={phone}
@@ -147,12 +150,12 @@ export default function PhoneBindPage() {
             slotProps={{ htmlInput: { maxLength: 13 } }}
             error={Boolean(phoneError)}
           />
-          <InputError message={phoneError} />
+          <InputError error={phoneError} />
         </Box>
         <Box>
           <Stack direction="row" spacing={1} alignItems="flex-start">
             <TextField
-              label="6 位验证码"
+              label={t('checkEmail.codeLabel')}
               value={otpCode}
               onChange={(e) => {
                 setOtpCode(e.target.value);
@@ -168,16 +171,15 @@ export default function PhoneBindPage() {
               disabled={sendingOtp || countdown > 0}
               sx={{ whiteSpace: 'nowrap', mt: 0.5 }}
             >
-              {sendingOtp ? '发送中…' : countdown > 0 ? `${countdown}s 后重发` : '发送验证码'}
+              {sendingOtp ? t('phoneBind.sending') : countdown > 0 ? t('phoneBind.resendIn', { countdown }) : t('phoneBind.send')}
             </Button>
           </Stack>
-          <InputError message={codeError} />
+          <InputError error={codeError} />
         </Box>
       </Stack>
 
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-        当前为模拟短信：验证码打印在 edge 日志（docker logs supabase_edge_runtime_2fa_safemodule_dev | grep
-        '[OTP]'）。同一手机号 24h 内限 5 条。
+        {t('phoneBind.simNote')}
       </Typography>
     </AuthShell>
   );

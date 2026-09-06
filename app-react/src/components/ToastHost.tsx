@@ -4,6 +4,7 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import CloseRoundedIcon from '@mui/icons-material/CloseRounded';
 import { toastIn } from '../shared-theme/motion';
+import { useI18n } from '../i18n/LocaleContext';
 
 export interface ToastDetail {
   message: string;
@@ -21,6 +22,7 @@ const severityOf = (t: ToastDetail['type']) => (t === 'error' ? 'error' : t === 
  * 连续消息各自成条上下排列（仿旧版堆叠），不再被后一条顶替；各自倒计时关闭。
  */
 export default function ToastHost() {
+  const { t } = useI18n();
   const [toasts, setToasts] = React.useState<ToastItem[]>([]);
 
   const dismiss = React.useCallback((key: number) => {
@@ -59,20 +61,20 @@ export default function ToastHost() {
         width: { xs: 'calc(100% - 32px)', sm: 'auto' },
       }}
     >
-      {toasts.map((t) => (
+      {toasts.map((item) => (
         <Alert
-          key={t.key}
-          severity={severityOf(t.type)}
+          key={item.key}
+          severity={severityOf(item.type)}
           variant="filled"
-          onClose={() => dismiss(t.key)}
+          onClose={() => dismiss(item.key)}
           action={
-            <IconButton size="small" aria-label="关闭" onClick={() => dismiss(t.key)} sx={{ color: 'inherit' }}>
+            <IconButton size="small" aria-label={t('common.close')} onClick={() => dismiss(item.key)} sx={{ color: 'inherit' }}>
               <CloseRoundedIcon fontSize="small" />
             </IconButton>
           }
           sx={{ pointerEvents: 'auto', boxShadow: 3, ...toastIn }}
         >
-          {t.message}
+          {item.message}
         </Alert>
       ))}
     </Box>

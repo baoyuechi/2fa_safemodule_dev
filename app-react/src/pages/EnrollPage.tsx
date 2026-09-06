@@ -12,6 +12,7 @@ import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { useNavigate } from 'react-router-dom';
 import AccountShell from '../components/AccountShell';
 import PageLoader from '../components/PageLoader';
+import { useI18n } from '../i18n/LocaleContext';
 import {
   clearSession,
   fetchSessionUser,
@@ -28,6 +29,7 @@ import type { MfaUser } from '../api/mfaClient';
 /** 通行密钥管理页（图 2 风格）：返回箭头 + 说明 + 「创建通行密钥」药丸 + 凭据列表卡。 */
 export default function EnrollPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [user, setUser] = React.useState<MfaUser | null>(null);
   const [enrolled, setEnrolled] = React.useState(false);
   const [lastCredentialId, setLastCredentialId] = React.useState<string | null>(null);
@@ -69,16 +71,16 @@ export default function EnrollPage() {
     const session = getSession();
     if (!session?.access_token) return;
     setBusy(true);
-    setStatus('等待指纹验证…（若浏览器无响应请确认 Touch ID 已录入）');
+    setStatus(t('enroll.waitingFingerprint'));
     try {
       const { attestation } = await startPasskeyRegistration(session.access_token, 'enroll');
-      setStatus('指纹采集完成，服务端验证中…');
+      setStatus(t('enroll.serverVerifying'));
       const { credentialId } = await submitPasskeyRegistration(session.access_token, attestation);
       // 成功（服务端已置 mfa_enrollments.enabled=true）
       setLastCredentialId(credentialId);
       setEnrolled(true);
       setStatus('');
-      toast('绑定成功', 'success');
+      toast(t('enroll.success'), 'success');
     } catch (e) {
       handleError(e); // 用户取消静默；CREDENTIAL_EXISTS/UV_REQUIRED 等按字典提示
       setStatus('');
@@ -93,18 +95,17 @@ export default function EnrollPage() {
     <AccountShell active="passkeys" user={user} onLogout={doLogout}>
       {/* 内容头：返回 + 标题 */}
       <Stack direction="row" spacing={1.5} alignItems="center">
-        <IconButton component="button" onClick={() => navigate('/security')} aria-label="返回安全中心">
+        <IconButton component="button" onClick={() => navigate('/security')} aria-label={t('enroll.backAria')}>
           <ArrowBackRoundedIcon />
         </IconButton>
-        <Typography variant="h1">通行密钥和安全密钥</Typography>
+        <Typography variant="h1">{t('enroll.title')}</Typography>
       </Stack>
 
       <Typography sx={{ color: 'text.secondary', maxWidth: 720 }}>
-        借助通行密钥，你仅凭指纹、面孔、屏幕解锁方式即可安全登录
-        isaSpectrum。通行密钥还可以作为你使用密码登录时的第二重保障。请务必确保你的屏幕解锁方式不外泄，仅供你本人使用。
+        {t('enroll.lead1')}
       </Typography>
       <Typography sx={{ color: 'text.secondary', maxWidth: 720 }}>
-        你可以在你的设备上创建通行密钥。
+        {t('enroll.lead2')}
       </Typography>
 
       {/* 创建入口 */}
@@ -116,7 +117,7 @@ export default function EnrollPage() {
           disabled={busy}
           sx={{ borderRadius: 999, px: 2.5 }}
         >
-          {busy ? '进行中…' : '创建通行密钥'}
+          {busy ? t('enroll.creating') : t('enroll.create')}
         </Button>
         {status && (
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -127,12 +128,12 @@ export default function EnrollPage() {
 
       {/* 凭据列表卡 */}
       <Card variant="outlined" sx={{ px: { xs: 2.5, sm: 4 }, py: 3 }}>
-        <Typography variant="h2">通行密钥</Typography>
+        <Typography variant="h2">{t('enroll.listTitle')}</Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
-          你可以在设备上创建通行密钥，用 Touch ID / Windows Hello 一触即达。
+          {t('enroll.listHint')}
         </Typography>
         <Typography variant="body2" sx={{ color: 'text.secondary', mt: 2, mb: 1 }}>
-          您的设备
+          {t('enroll.yourDevices')}
         </Typography>
 
         {enrolled ? (
@@ -140,11 +141,11 @@ export default function EnrollPage() {
             <Stack direction="row" spacing={2} alignItems="center">
               <FingerprintRoundedIcon sx={{ fontSize: 34, color: 'text.secondary' }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography>本设备{lastCredentialId ? '（新绑定）' : ''}</Typography>
+                <Typography>{t('enroll.thisDevice')}{lastCredentialId ? t('enroll.newBinding') : ''}</Typography>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>
                   {lastCredentialId
-                    ? `由本设备创建，已与 ${user.email} 关联`
-                    : '已与你的账号关联，可用于免密码直登'}
+                    ? t('enroll.createdLinked', { email: user.email?.toString() ?? '' })
+                    : t('enroll.linkedAccount')}
                 </Typography>
                 {lastCredentialId && (
                   <Typography
@@ -168,19 +169,19 @@ export default function EnrollPage() {
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
               {/* 再绑一台设备：服务端 excludeCredentials 会排除已绑认证器（FR-6.2 多凭据） */}
               <Button variant="outlined" onClick={handleCreate} disabled={busy} sx={{ borderRadius: 999 }}>
-                再绑一台设备
+                {t('enroll.addDevice')}
               </Button>
               <Button component="button" onClick={() => navigate('/security')} variant="text" sx={{ borderRadius: 999 }}>
-                返回安全中心
+                {t('enroll.backSecurity')}
               </Button>
             </Stack>
             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-              建议至少绑定两台设备，以防设备丢失后无法登录。同一台设备重复绑定会被自动拒绝。
+              {t('enroll.multiTip')}
             </Typography>
           </Stack>
         ) : (
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            尚未创建通行密钥。点击上方「创建通行密钥」完成绑定（约 30 秒），即可参与发言。
+            {t('enroll.noneYet')}
           </Typography>
         )}
       </Card>

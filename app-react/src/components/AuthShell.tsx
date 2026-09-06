@@ -4,10 +4,11 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import ArrowDropDownRoundedIcon from '@mui/icons-material/ArrowDropDownRounded';
 import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
+import LocaleMenuButton from './LocaleMenuButton';
 import { enterFadeUp, stepFadeUp } from '../shared-theme/motion';
+import { useI18n } from '../i18n/LocaleContext';
 
 interface AuthShellProps {
   /** 左栏大标题（登录 / 创建您的账号 / 欢迎回来…） */
@@ -30,6 +31,8 @@ interface AuthShellProps {
  * 卡片下方页脚：左侧语言选择，右侧 帮助/隐私权/条款。
  */
 export default function AuthShell({ title, subtitle, leftExtra, children, actions, transitionKey }: AuthShellProps) {
+  const { t } = useI18n();
+  const footerLinks = ['common.help', 'common.privacy', 'common.terms'] as const;
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ alignSelf: 'flex-end', px: { xs: 2, sm: 3 }, py: 1.5 }}>
@@ -108,13 +111,11 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
           animationDelay: '0.1s',
         }}
       >
-        <Button size="small" startIcon={<ArrowDropDownRoundedIcon />} disabled>
-          简体中文
-        </Button>
+        <LocaleMenuButton />
         <Stack direction="row" spacing={{ xs: 2, sm: 4 }}>
-          {['帮助', '隐私权', '条款'].map((item) => (
-            <Button key={item} size="small" disabled sx={{ minWidth: 0, p: 0 }}>
-              {item}
+          {footerLinks.map((key) => (
+            <Button key={key} size="small" disabled sx={{ minWidth: 0, p: 0 }}>
+              {t(key)}
             </Button>
           ))}
         </Stack>

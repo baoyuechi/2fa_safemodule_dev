@@ -17,6 +17,8 @@ import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import Tooltip from '@mui/material/Tooltip';
 import { Link as RouterLink } from 'react-router-dom';
 import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
+import LocaleMenuButton from './LocaleMenuButton';
+import { useI18n } from '../i18n/LocaleContext';
 import type { MfaUser } from '../api/mfaClient';
 
 interface AccountShellProps {
@@ -36,13 +38,6 @@ interface NavItem {
   to?: string;
   disabled?: boolean;
 }
-
-const NAV_ITEMS: NavItem[] = [
-  { key: 'security', label: '安全性与登录', icon: <LockRoundedIcon sx={{ fontSize: 18 }} />, variant: 'primary', to: '/security' },
-  { key: 'passkeys', label: '通行密钥', icon: <FingerprintRoundedIcon sx={{ fontSize: 18 }} />, variant: 'success', to: '/enroll' },
-  { key: 'phone', label: '手机号绑定', icon: <SmsRoundedIcon sx={{ fontSize: 18 }} />, variant: 'warning', to: '/phone' },
-  { key: 'recovery', label: '恢复码', icon: <KeyRoundedIcon sx={{ fontSize: 18 }} />, variant: 'info', disabled: true },
-];
 
 /** 明暗双套色值：浅色 pastel / 深色 subdued */
 const NAV_BG_LIGHT: Record<string, string> = {
@@ -64,8 +59,18 @@ const NAV_BG_DARK: Record<string, string> = {
  */
 export default function AccountShell({ active, user, onLogout, children }: AccountShellProps) {
   const theme = useTheme();
+  const { t } = useI18n();
   const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
   const initial = (user.email ?? '？').slice(0, 1).toUpperCase();
+
+  // 导航项：文案按当前语言取词
+  const NAV_ITEMS: NavItem[] = [
+    { key: 'security', label: t('nav.security'), icon: <LockRoundedIcon sx={{ fontSize: 18 }} />, variant: 'primary', to: '/security' },
+    { key: 'passkeys', label: t('nav.passkeys'), icon: <FingerprintRoundedIcon sx={{ fontSize: 18 }} />, variant: 'success', to: '/enroll' },
+    { key: 'phone', label: t('nav.phone'), icon: <SmsRoundedIcon sx={{ fontSize: 18 }} />, variant: 'warning', to: '/phone' },
+    { key: 'recovery', label: t('nav.recovery'), icon: <KeyRoundedIcon sx={{ fontSize: 18 }} />, variant: 'info', disabled: true },
+  ];
+  const footerLinks = ['common.privacy', 'common.terms'] as const;
 
   /** 圆标底色：按当前明暗模式取对应色值 */
   const navBg = (variant: string) => (theme.palette.mode === 'dark' ? NAV_BG_DARK[variant] : NAV_BG_LIGHT[variant]);
@@ -89,11 +94,12 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
         }}
       >
         <Typography sx={{ fontSize: 20, fontWeight: 500 }}>
-          isaSpectrum <Box component="span" sx={{ color: 'text.secondary' }}>账号</Box>
+          isaSpectrum <Box component="span" sx={{ color: 'text.secondary' }}>{t('auth.brandAccount')}</Box>
         </Typography>
         <Stack direction="row" spacing={1.5} alignItems="center">
+          <LocaleMenuButton iconOnly />
           <ColorModeIconDropdown />
-          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" aria-label="账号菜单">
+          <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small" aria-label={t('auth.menuLabel')}>
             <Avatar sx={{ width: 34, height: 34, bgcolor: 'primary.main', fontSize: 15 }}>{initial}</Avatar>
           </IconButton>
         </Stack>
@@ -108,7 +114,7 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
         <MenuItem disabled sx={{ opacity: '1 !important' }}>
           <Stack>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>{user.email}</Typography>
-            <Typography variant="caption" sx={{ color: 'text.secondary' }}>当前登录账号</Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('auth.signedInAsCurrent')}</Typography>
           </Stack>
         </MenuItem>
         <Divider />
@@ -118,7 +124,7 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
             onLogout();
           }}
         >
-          退出登录
+          {t('auth.signOut')}
         </MenuItem>
       </Menu>
 
@@ -159,7 +165,7 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
                 <Typography variant="body2" sx={{ fontWeight: isActive ? 600 : 400, flex: 1 }}>
                   {item.label}
                 </Typography>
-                {item.disabled && <Chip label="预留" size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />}
+                {item.disabled && <Chip label={t('nav.upcoming')} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />}
               </>
             );
             const row = item.to ? (
@@ -172,7 +178,7 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
               </ListItemButton>
             );
             return item.disabled ? (
-              <Tooltip key={item.key} title="恢复码功能即将上线，敬请期待" placement="right">
+              <Tooltip key={item.key} title={t('auth.recoverySoon')} placement="right">
                 <Box>{row}</Box>
               </Tooltip>
             ) : (
@@ -181,9 +187,9 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
           })}
           <Box sx={{ px: 2.5, pt: 6 }}>
             <Stack direction="row" spacing={2}>
-              {['隐私权', '条款'].map((t) => (
-                <Typography key={t} variant="caption" sx={{ color: 'text.secondary' }}>
-                  {t}
+              {footerLinks.map((key) => (
+                <Typography key={key} variant="caption" sx={{ color: 'text.secondary' }}>
+                  {t(key)}
                 </Typography>
               ))}
             </Stack>

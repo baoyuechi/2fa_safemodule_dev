@@ -21,6 +21,8 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
+import { tKey } from '../i18n/LocaleContext';
+import type { MessageKey } from '../i18n/messages';
 
 export type { AuthenticationResponseJSON };
 
@@ -50,41 +52,49 @@ export interface MfaUser {
 }
 
 // ---------------------------------------------------------------------------
-// 统一错误字典（Part 5 §四 + 本项目新增码）
+// 统一错误字典（Part 5 §四 + 本项目新增码）——文案经 i18n 按当前语言取词
 // ---------------------------------------------------------------------------
-const ERRORS: Record<string, string | null> = {
+const ERRORS: Record<string, MessageKey | null> = {
   // 契约字典
-  DOMAIN_NOT_ALLOWED: '请使用学校邮箱注册',
-  PHONE_TAKEN: '该手机号已被其他账号使用',
-  OTP_EXPIRED: '验证码已过期，请重新获取',
-  CHALLENGE_EXPIRED: '操作超时，请重试',
-  NO_PASSKEY: '这台设备还没有绑定通行证',
-  UV_REQUIRED: '需要指纹验证才能继续',
-  CREDENTIAL_SUSPENDED: '账号已挂起，请联系管理员',
-  RATE_LIMITED: '尝试次数过多，请稍后再试',
+  DOMAIN_NOT_ALLOWED: 'error.domainNotAllowed',
+  PHONE_TAKEN: 'error.phoneTaken',
+  OTP_EXPIRED: 'error.otpExpired',
+  CHALLENGE_EXPIRED: 'error.challengeExpired',
+  NO_PASSKEY: 'error.noPasskey',
+  UV_REQUIRED: 'error.uvRequired',
+  CREDENTIAL_SUSPENDED: 'error.credentialSuspended',
+  RATE_LIMITED: 'error.rateLimited',
   CEREMONY_ABORTED: null, // 静默·不展示（用户取消仪式）
-  FALLBACK: '系统开小差了，请稍后重试',
+  FALLBACK: 'error.fallback',
   // 服务端细化码（register/login-verify 新增）→ 归并到字典语义
-  INVALID_CHALLENGE: '操作超时，请重试',
-  INVALID_RESPONSE: '验证失败，请重试',
-  INVALID_SIGNATURE: '指纹验证失败，请重试',
-  CREDENTIAL_NOT_FOUND: '这台设备的通行密钥已失效，请重新绑定',
-  CREDENTIAL_EXISTS: '这台设备已经绑定过通行密钥',
+  INVALID_CHALLENGE: 'error.challengeExpired',
+  INVALID_RESPONSE: 'error.invalidResponse',
+  INVALID_SIGNATURE: 'error.invalidSignature',
+  CREDENTIAL_NOT_FOUND: 'error.credentialNotFound',
+  CREDENTIAL_EXISTS: 'error.credentialExists',
   // 前端本地码（GoTrue 交互）
-  INVALID_CREDENTIALS: '邮箱或密码不正确',
-  EMAIL_TAKEN: '该邮箱已被注册，请直接登录',
+  INVALID_CREDENTIALS: 'error.invalidCredentials',
+  EMAIL_TAKEN: 'error.emailTaken',
 };
 
 /** 错误码 → 用户文案；返回 null 表示静默（CEREMONY_ABORTED） */
 export function translate(code: string): string | null {
-  const msg = ERRORS[code];
-  return msg === undefined ? ERRORS.FALLBACK : msg;
+  const key = ERRORS[code];
+  if (key === undefined) return tKey('error.fallback');
+  if (key === null) return null;
+  return tKey(key);
+}
+
+/** 错误码 → i18n 消息键（供行内错误存键渲染，语言切换后自动重译）；未知/静默码回落 fallback */
+export function errorCodeToKey(code: string | undefined): MessageKey {
+  const key = ERRORS[code ?? ''];
+  return (typeof key === 'string' ? key : 'error.fallback') as MessageKey;
 }
 
 function mfaError(code: string, raw?: unknown): Error & { code: string; raw?: unknown; silent: boolean } {
   // 用户文案保持纯净（Part 5 §四：raw 进 console，不进 UI）；FALLBACK 额外留原始日志
   if (raw) console.error(`[mfa] ${code}:`, raw);
-  const text = translate(code) ?? ERRORS.FALLBACK!;
+  const text = translate(code) ?? tKey('error.fallback');
   const err = new Error(text) as Error & { code: string; raw?: unknown; silent: boolean };
   err.code = code;
   err.raw = raw; // 调试用原始信息（e.raw 供页面诊断留痕，永不进 Toast）
@@ -105,7 +115,7 @@ export function toast(message: string, type: ToastType = 'info'): void {
 export function handleError(e: unknown): void {
   const err = e as { silent?: boolean; message?: string } | null;
   if (err?.silent) return;
-  toast(err?.message ?? ERRORS.FALLBACK!, 'error');
+  toast(err?.message ?? tKey('error.fallback'), 'error');
 }
 
 // ---------------------------------------------------------------------------

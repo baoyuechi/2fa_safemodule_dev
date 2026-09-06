@@ -18,6 +18,9 @@ import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import AuthShell, { AuthActions } from '../components/AuthShell';
 import EmailPill from '../components/EmailPill';
 import InputError from '../components/InputError';
+import type { InputErrorInfo } from '../components/InputError';
+import { useI18n } from '../i18n/LocaleContext';
+import { errorCodeToKey } from '../api/mfaClient';
 import {
   browserSupportsWebAuthnAutofillSafe,
   browserSupportsWebAuthnSafe,
@@ -47,6 +50,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /** Google 分步登录流（图 3/4/5 风格）：输入邮箱 → 选择登录方式 → 验证身份。 */
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [checking, setChecking] = React.useState(true);
   const [step, setStep] = React.useState<Step>('email');
   const [email, setEmail] = React.useState('');
@@ -54,9 +58,10 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [busyPasskey, setBusyPasskey] = React.useState(false);
   const [busyPassword, setBusyPassword] = React.useState(false);
-  // 行内字段错误（InputError 红字），输入即清除
-  const [emailError, setEmailError] = React.useState<string | null>(null);
-  const [passwordError, setPasswordError] = React.useState<string | null>(null);
+  // 行内字段错误（InputError 红字），输入即清除。存 i18n 键而非译文：语言切换后自动重译。
+  const [emailError, setEmailError] = React.useState<InputErrorInfo | null>(null);
+  const [passwordError, setPasswordError] = React.useState<InputErrorInfo | null>(null);
+  const [passkeyError, setPasskeyError] = React.useState<InputErrorInfo | null>(null);
   // WebAuthn 能力探测：不支持时隐藏「使用您的通行密钥」入口
   const [passkeySupported, setPasskeySupported] = React.useState(true);
   React.useEffect(() => {
@@ -85,10 +90,10 @@ export default function LoginPage() {
     async (assertion: AuthenticationResponseJSON, mail: string | null) => {
       const { token_hash } = await loginVerify({ ...(mail ? { email: mail } : {}), response: assertion });
       saveSession(await exchangeTokenHash(token_hash));
-      toast('登录成功', 'success');
+      toast(t('login.success'), 'success');
       navigate('/security', { replace: true });
     },
-    [navigate],
+    [navigate, t],
   );
 
   // Conditional UI 早期尝试（Part 2 §4 常态体验）：能力探测通过即挂起一个
@@ -120,21 +125,27 @@ export default function LoginPage() {
   // 字段级错误走行内红字（InputError），不再弹 Toast。
   function handleEmailNext() {
     const mail = email.trim();
-    if (!mail) return setEmailError('请输入学校邮箱');
-    if (!EMAIL_RE.test(mail)) return setEmailError('请输入有效的邮箱地址');
+    if (!mail) return setEmailError({ key: 'login.emailEmpty' });
+    if (!EMAIL_RE.test(mail)) return setEmailError({ key: 'login.emailInvalid' });
     setStep('choose');
   }
 
   // 选择登录方式步：通行密钥仪式（填了邮箱则限定 allowCredentials）
   async function handlePasskey() {
     setBusyPasskey(true);
+    setPasskeyError(null);
     try {
       const mail = email.trim().toLowerCase() || null;
       const { optionsJSON } = await loginOptions(mail ? { email: mail } : {});
       const assertion = await startPasskeyAuthentication(optionsJSON);
       await finishPasskeyLogin(assertion, mail);
     } catch (e) {
-      handleError(e); // 用户取消仪式静默
+      const err = e as { code?: string; message?: string; silent?: boolean };
+      if (err?.silent) {
+        // 用户取消仪式静默
+      } else {
+        setPasskeyError({ key: err?.code ? errorCodeToKey(err.code) : 'login.verifyFailed' });
+      }
     } finally {
       setBusyPasskey(false);
     }
@@ -145,12 +156,12 @@ export default function LoginPage() {
     setBusyPassword(true);
     try {
       saveSession(await signInWithPassword(email.trim().toLowerCase(), password));
-      toast('登录成功', 'success');
+      toast(t('login.success'), 'success');
       navigate('/security', { replace: true });
     } catch (e) {
       const err = e as { code?: string; message?: string };
       if (err?.code === 'INVALID_CREDENTIALS') {
-        setPasswordError('邮箱或密码不正确。请重试或使用通行密钥登录');
+        setPasswordError({ key: 'login.incorrectCredentials' });
         setPassword('');
       } else {
         handleError(e);
@@ -162,7 +173,7 @@ export default function LoginPage() {
 
   if (checking) {
     return (
-      <AuthShell title="登录" subtitle="使用你的学校邮箱账号继续">
+      <AuthShell title={t('login.title')} subtitle={t('login.subtitle')}>
         <Box sx={{ display: 'grid', placeItems: 'center', py: 8 }}>
           <CircularProgress size={28} />
         </Box>
@@ -176,7 +187,7 @@ export default function LoginPage() {
       email={email.trim().toLowerCase()}
       items={[
         {
-          label: '使用其他账号',
+          label: t('login.useAnotherAccount'),
           onClick: () => {
             setEmail('');
             setPassword('');
@@ -190,8 +201,8 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title={step === 'email' ? '登录' : '欢迎回来'}
-      subtitle={step === 'email' ? '使用你的学校邮箱账号继续' : undefined}
+      title={step === 'email' ? t('login.title') : t('login.welcomeBack')}
+      subtitle={step === 'email' ? t('login.subtitle') : undefined}
       leftExtra={step === 'email' ? undefined : emailPill}
       transitionKey={step}
       actions={
@@ -199,12 +210,12 @@ export default function LoginPage() {
           <AuthActions
             secondary={
               <Link component={RouterLink} to="/register" underline="hover">
-                创建账号
+                {t('login.createAccount')}
               </Link>
             }
             primary={
               <Button variant="contained" size="large" onClick={handleEmailNext}>
-                下一步
+                {t('common.next')}
               </Button>
             }
           />
@@ -212,12 +223,12 @@ export default function LoginPage() {
           <AuthActions
             secondary={
               <Button variant="text" onClick={() => setStep('choose')}>
-                试试其他方式
+                {t('login.tryAnotherWay')}
               </Button>
             }
             primary={
               <Button variant="contained" size="large" onClick={handlePasswordLogin} disabled={busyPassword}>
-                {busyPassword ? '登录中…' : '下一步'}
+                {busyPassword ? t('login.signingIn') : t('common.next')}
               </Button>
             }
           />
@@ -227,7 +238,7 @@ export default function LoginPage() {
       {step === 'email' && (
         <Box>
           <TextField
-            label="学校邮箱"
+            label={t('common.emailLabel')}
             type="email"
             autoFocus
             fullWidth
@@ -245,49 +256,53 @@ export default function LoginPage() {
             slotProps={{ htmlInput: { autoComplete: 'username webauthn' } }}
           />
           {/* Box 包裹：避免 InputError 成为 Stack 直接子元素而被 spacing 撑开间距 */}
-          <InputError message={emailError} />
+          <InputError error={emailError} />
         </Box>
       )}
 
       {step === 'choose' && (
         <>
-          <Typography variant="h2">选择您想要使用的登录方式：</Typography>
+          <Typography variant="h2">{t('login.chooseTitle')}</Typography>
           {/* Google 式：无描边卡片，整行分隔线列表撑满右栏 */}
           <List disablePadding>
             <ListItemButton
-              onClick={() => setStep('password')}
+              onClick={() => {
+                setPasskeyError(null);
+                setStep('password');
+              }}
               disabled={busyPasskey}
               sx={{ py: 1.75, px: 0.5, borderRadius: 0 }}
             >
               <LockRoundedIcon sx={{ mr: 2.5, color: 'primary.main' }} />
-              <Typography>输入您的密码</Typography>
+              <Typography>{t('login.passwordOption')}</Typography>
             </ListItemButton>
             {passkeySupported && (
               <>
                 <Divider component="li" />
                 <ListItemButton onClick={handlePasskey} disabled={busyPasskey} sx={{ py: 1.75, px: 0.5, borderRadius: 0 }}>
                   <FingerprintRoundedIcon sx={{ mr: 2.5, color: 'primary.main' }} />
-                  <Typography>{busyPasskey ? '等待指纹验证…' : '使用您的通行密钥'}</Typography>
+                  <Typography>{busyPasskey ? t('login.passwordWaiting') : t('login.passkeyOption')}</Typography>
                 </ListItemButton>
               </>
             )}
           </List>
           {passkeySupported && (
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              推荐：Touch ID / Windows Hello 一触即达，无需输入密码
+              {t('login.passkeyRecommended')}
             </Typography>
           )}
+          <InputError error={passkeyError} />
         </>
       )}
 
       {step === 'password' && (
         <>
           <Alert severity="info" icon={<FingerprintRoundedIcon fontSize="inherit" />}>
-            不妨选择「使用您的通行密钥」，更轻松更安全地登录
+            {t('login.passkeyHint')}
           </Alert>
           <Box>
             <TextField
-              label="输入您的密码"
+              label={t('login.passwordOption')}
               type={showPassword ? 'text' : 'password'}
               autoFocus
               fullWidth
@@ -300,11 +315,11 @@ export default function LoginPage() {
               error={Boolean(passwordError)}
               slotProps={{ htmlInput: { autoComplete: 'current-password' } }}
             />
-            <InputError message={passwordError} />
+            <InputError error={passwordError} />
           </Box>
           <FormControlLabel
             control={<Checkbox checked={showPassword} onChange={(e) => setShowPassword(e.target.checked)} />}
-            label={<Typography variant="body2">显示密码</Typography>}
+            label={<Typography variant="body2">{t('login.showPassword')}</Typography>}
             sx={{ alignSelf: 'flex-start' }}
           />
         </>
