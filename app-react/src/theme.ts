@@ -85,13 +85,16 @@ const theme = createTheme({
     },
     MuiCard: {
       styleOverrides: {
-        root: {
+        root: ({ theme }) => ({
           borderRadius: RADIUS_CARD,
           backgroundImage: 'none',
           overflow: 'hidden',
-          // 两层柔和阴影：贴地 1px 锐影 + 大范围慢衰减，形成悬浮层级（暗色下同样成立）
-          boxShadow: '0 1px 2px rgba(60,64,67,.12), 0 6px 24px rgba(60,64,67,.10)',
-        },
+          // 四周环绕阴影：贴地锐影 + 大范围慢衰减；暗色用纯黑加强（深灰页面上可感知）
+          boxShadow: '0 1px 3px rgba(60,64,67,.16), 0 10px 36px rgba(60,64,67,.18)',
+          ...theme.applyStyles('dark', {
+            boxShadow: '0 2px 10px rgba(0,0,0,.55), 0 14px 48px rgba(0,0,0,.6)',
+          }),
+        }),
       },
     },
     MuiTextField: {
