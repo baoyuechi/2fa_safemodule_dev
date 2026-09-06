@@ -46,6 +46,8 @@ const theme = createTheme({
           borderRadius: RADIUS_PILL,
           paddingInline: 24,
           fontWeight: 500,
+          // 日语等长文案下按钮文字禁止折行（药丸内两行非常难看）
+          whiteSpace: 'nowrap',
           transition:
             'background-color .2s ease, border-color .2s ease, color .2s ease, box-shadow .25s ease, transform .2s ease',
           '&:active': { transform: 'translateY(0) scale(0.98)' },
@@ -113,6 +115,29 @@ const theme = createTheme({
           },
         }),
       },
+    },
+    MuiCssBaseline: {
+      // 日语排版规则：假名紧排（palt）、严格禁则换行、收紧行高、标题平衡断行。
+      // 解决日语假名句子偏长导致的松散行距与糟糕断句位置。
+      styleOverrides: `
+        html[lang="ja"] {
+          font-feature-settings: "palt" 1;
+        }
+        html[lang="ja"] .MuiTypography-root {
+          line-break: strict;
+          word-break: normal;
+        }
+        html[lang="ja"] .MuiTypography-body1,
+        html[lang="ja"] .MuiTypography-body2,
+        html[lang="ja"] .MuiTypography-caption {
+          line-height: 1.45;
+        }
+        html[lang="ja"] .MuiTypography-h1,
+        html[lang="ja"] .MuiTypography-h2 {
+          text-wrap: balance;
+          line-height: 1.4;
+        }
+      `,
     },
   },
 });

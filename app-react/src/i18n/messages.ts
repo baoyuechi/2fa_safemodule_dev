@@ -612,7 +612,7 @@ const jaMessages: Record<MessageKey, string> = {
   'auth.signedInAsCurrent': '現在のログイン',
   'auth.signOut': 'ログアウト',
   'auth.recoverySoon': 'リカバリーコードは近日提供予定です。お楽しみに！',
-  'nav.security': 'セキュリティとログイン',
+  'nav.security': 'セキュリティ',
   'nav.passkeys': 'パスキー',
   'nav.phone': '電話番号',
   'nav.recovery': 'リカバリーコード',
@@ -628,17 +628,17 @@ const jaMessages: Record<MessageKey, string> = {
   'login.emailEmpty': '学校メールアドレスを入力してください',
   'login.emailInvalid': '有効なメールアドレスを入力してください',
   'login.createAccount': 'アカウントを作成',
-  'login.chooseTitle': 'ご希望のログイン方法を選択してください：',
+  'login.chooseTitle': 'ログイン方法を選択してください',
   'login.passwordOption': 'パスワードを入力',
   'login.passwordWaiting': '指紋認証を待っています…',
   'login.passkeyOption': 'パスキーを使用',
-  'login.passkeyRecommended': 'おすすめ：Touch ID / Windows Hello でワンタッチログイン、パスワード不要',
+  'login.passkeyRecommended': 'おすすめ：Touch ID / Windows Hello でワンタッチログイン',
   'login.showPassword': 'パスワードを表示',
   'login.tryAnotherWay': '別の方法を試す',
   'login.signingIn': 'ログイン中…',
   'login.incorrectCredentials': 'メールアドレスまたはパスワードが違います。再試行するかパスキーでログインしてください',
   'login.verifyFailed': '認証に失敗しました。もう一度お試しください',
-  'login.passkeyHint': 'パスキーを使うと、より簡単で安全にログインできます',
+  'login.passkeyHint': 'パスキーなら、もっと簡単で安全にログインできます',
   'login.success': 'ログインしました',
   'login.useAnotherAccount': '別のアカウントを使用',
 
@@ -694,8 +694,7 @@ const jaMessages: Record<MessageKey, string> = {
   'verified.autoRedirect': '{countdown} 秒後にログインページへ移動します',
 
   'phoneBind.title': '電話番号を確認',
-  'phoneBind.subtitle':
-    '必須ステップ。電話番号はアカウント復旧とバックアップ認証のみに使用され、日常のログインには使用されません。',
+  'phoneBind.subtitle': '必須ステップ。電話番号はアカウント復旧とバックアップ認証のみに使用します。',
   'phoneBind.phoneLabel': '電話番号',
   'phoneBind.phoneInvalid': '正しい 11 桁の携帯番号を入力してください',
   'phoneBind.codeInvalid': '6 桁のコードを入力してください',
@@ -706,7 +705,7 @@ const jaMessages: Record<MessageKey, string> = {
   'phoneBind.phoneTaken': 'この電話番号は既に使用されています',
   'phoneBind.missingToken': 'ワンタイムトークンがありません',
   'phoneBind.success': '電話番号をリンクしました',
-  'phoneBind.switchEmail': 'ログアウトして別のメールアドレスで登録',
+  'phoneBind.switchEmail': '別のメールで登録し直す',
   'phoneBind.binding': '確認中…',
   'phoneBind.bindButton': '認証してリンク',
   'phoneBind.simNote':
@@ -738,8 +737,7 @@ const jaMessages: Record<MessageKey, string> = {
 
   'phone.title': '電話番号',
   'phone.boundTitle': '登録時に一度だけリンク済み',
-  'phone.boundDesc':
-    '電話番号は登録時に SMS コードでリンクされました。アカウント復旧とバックアップ認証のみに使用され、日常のログインには使われず、完全な番号がこのページに表示されることはありません。',
+  'phone.boundDesc': '電話番号は登録時に SMS コードでリンクしました。復旧とバックアップ認証専用で、日常のログインには使われず、番号の全体が表示されることもありません。',
   'phone.linked': 'リンク済み · コードの有効期間は 5 分、1 日 5 件まで',
 
   'security.protected': 'アカウントは保護されています',
@@ -760,7 +758,7 @@ const jaMessages: Record<MessageKey, string> = {
   'security.passwordDesc': '指紋非対応のデバイスでは、メールアドレスとパスワードでログインできます',
   'security.passwordSet': '設定済み',
   'security.phoneName': '電話番号',
-  'security.phoneDesc': '登録時にリンク。アカウント復旧とバックアップ認証のみに使用され、日常のログインには使用されません',
+  'security.phoneDesc': '登録時にリンク。復旧とバックアップ認証専用です',
   'security.phoneLinked': '登録時にリンク',
   'security.yourAccount': 'あなたのアカウント',
   'security.schoolEmail': '学校メールアドレス',

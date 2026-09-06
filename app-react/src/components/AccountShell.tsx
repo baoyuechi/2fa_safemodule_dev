@@ -162,7 +162,7 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
                 >
                   {item.icon}
                 </Box>
-                <Typography variant="body2" sx={{ fontWeight: isActive ? 600 : 400, flex: 1 }}>
+                <Typography variant="body2" noWrap sx={{ fontWeight: isActive ? 600 : 400, flex: 1, minWidth: 0 }}>
                   {item.label}
                 </Typography>
                 {item.disabled && <Chip label={t('nav.upcoming')} size="small" variant="outlined" sx={{ height: 20, fontSize: 11 }} />}
