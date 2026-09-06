@@ -16,6 +16,7 @@ import SmsRoundedIcon from '@mui/icons-material/SmsRounded';
 import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import Tooltip from '@mui/material/Tooltip';
 import { Link as RouterLink } from 'react-router-dom';
+import BrandLogo from './BrandLogo';
 import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
 import LocaleMenuButton from './LocaleMenuButton';
 import { useI18n } from '../i18n/LocaleContext';
@@ -93,9 +94,12 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
           py: 1.5,
         }}
       >
-        <Typography sx={{ fontSize: 20, fontWeight: 500 }}>
-          isaSpectrum <Box component="span" sx={{ color: 'text.secondary' }}>{t('auth.brandAccount')}</Box>
-        </Typography>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <BrandLogo size={26} />
+          <Typography sx={{ fontSize: 20, fontWeight: 500 }}>
+            isaSpectrum <Box component="span" sx={{ color: 'text.secondary' }}>{t('auth.brandAccount')}</Box>
+          </Typography>
+        </Stack>
         <Stack direction="row" spacing={1.5} alignItems="center">
           <LocaleMenuButton iconOnly />
           <ColorModeIconDropdown />

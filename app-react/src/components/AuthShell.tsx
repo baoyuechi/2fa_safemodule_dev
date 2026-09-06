@@ -4,8 +4,8 @@ import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import { Link as RouterLink } from 'react-router-dom';
+import BrandLogo from './BrandLogo';
 import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
 import LocaleMenuButton from './LocaleMenuButton';
 import { enterFadeUp, stepFadeUp } from '../shared-theme/motion';
@@ -66,7 +66,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
               }}
             >
               <Stack spacing={2.5}>
-                <FingerprintRoundedIcon color="primary" sx={{ fontSize: 44 }} />
+                <BrandLogo size={48} />
                 <Typography variant="h1">{title}</Typography>
                 {subtitle && <Typography sx={{ color: 'text.secondary' }}>{subtitle}</Typography>}
                 {leftExtra}

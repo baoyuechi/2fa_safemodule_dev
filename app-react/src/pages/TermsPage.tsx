@@ -4,10 +4,10 @@ import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
-import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import { useNavigate } from 'react-router-dom';
 import IconButton from '@mui/material/IconButton';
 import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
+import BrandLogo from '../components/BrandLogo';
 import LocaleMenuButton from '../components/LocaleMenuButton';
 import { useI18n } from '../i18n/LocaleContext';
 import { termsContent } from '../i18n/terms';
@@ -39,7 +39,7 @@ export default function TermsPage() {
           <IconButton size="small" onClick={() => navigate(-1)} aria-label="back">
             <ArrowBackRoundedIcon fontSize="small" />
           </IconButton>
-          <FingerprintRoundedIcon color="primary" sx={{ fontSize: 26 }} />
+          <BrandLogo size={26} />
           <Typography sx={{ fontWeight: 700 }}>isaSpectrum</Typography>
         </Stack>
         <Stack direction="row" spacing={1.5} alignItems="center">
