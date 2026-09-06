@@ -98,6 +98,15 @@ const zhMessages = {
   'confirmEmail.verified': '邮箱验证成功',
   'confirmEmail.invalidLink': '验证链接无效或已过期，请重新注册',
 
+  'verified.done': '你已完成验证，现在可以使用了',
+  'verified.subtitle': '邮箱验证与手机号绑定均已完成',
+  'verified.accountReady': '你的账号已就绪。为方便日后登录，建议现在花 30 秒绑定通行密钥（可选）。',
+  'verified.passkeyTitle': '绑定通行密钥（可选）',
+  'verified.passkeyDesc': '用 Touch ID / Windows Hello 一触即达，无需输入密码；绑定后发言门槛即解除。',
+  'verified.passkeyCta': '绑定通行密钥（可选）',
+  'verified.backLogin': '返回登录',
+  'verified.autoRedirect': '{countdown} 秒后自动返回登录页',
+
   'phoneBind.title': '绑定手机号',
   'phoneBind.subtitle': '注册必选步骤。手机号仅用于账号恢复与备用验证，不参与日常登录。',
   'phoneBind.phoneLabel': '手机号',
@@ -283,6 +292,15 @@ const enMessages: Record<MessageKey, string> = {
   'confirmEmail.verified': 'Email verified',
   'confirmEmail.invalidLink': 'The verification link is invalid or has expired. Please sign up again',
 
+  'verified.done': "You're verified — you're all set",
+  'verified.subtitle': 'Email verification and phone linking are both complete',
+  'verified.accountReady': 'Your account is ready. To make future sign-ins easier, consider linking a passkey now (optional, about 30 seconds).',
+  'verified.passkeyTitle': 'Link a passkey (optional)',
+  'verified.passkeyDesc': 'Sign in with a single touch using Touch ID / Windows Hello — no password needed. Linking also unlocks posting.',
+  'verified.passkeyCta': 'Link a passkey (optional)',
+  'verified.backLogin': 'Back to sign in',
+  'verified.autoRedirect': 'Redirecting to sign in in {countdown}s',
+
   'phoneBind.title': 'Verify your phone number',
   'phoneBind.subtitle':
     'Required step. Your phone number is used only for account recovery and backup verification — not for everyday sign in.',
@@ -467,6 +485,15 @@ const esMessages: Record<MessageKey, string> = {
   'confirmEmail.body': 'Verificando tu correo…',
   'confirmEmail.verified': 'Correo verificado',
   'confirmEmail.invalidLink': 'El enlace de verificación no es válido o expiró. Regístrate de nuevo',
+
+  'verified.done': 'Ya está verificado: ya puedes usar tu cuenta',
+  'verified.subtitle': 'La verificación del correo y el vínculo del teléfono están completos',
+  'verified.accountReady': 'Tu cuenta está lista. Para facilitar futuros inicios de sesión, considera vincular una llave de acceso ahora (opcional, unos 30 segundos).',
+  'verified.passkeyTitle': 'Vincular una llave de acceso (opcional)',
+  'verified.passkeyDesc': 'Entra con un solo toque con Touch ID / Windows Hello, sin contraseña. Vincular también desbloquea publicar.',
+  'verified.passkeyCta': 'Vincular una llave de acceso (opcional)',
+  'verified.backLogin': 'Volver al inicio de sesión',
+  'verified.autoRedirect': 'Redirigiendo al inicio de sesión en {countdown} s',
 
   'phoneBind.title': 'Verifica tu número de teléfono',
   'phoneBind.subtitle':
@@ -656,6 +683,15 @@ const jaMessages: Record<MessageKey, string> = {
   'confirmEmail.body': 'メールアドレスを確認中…',
   'confirmEmail.verified': 'メールアドレスを認証しました',
   'confirmEmail.invalidLink': '認証リンクが無効または期限切れです。もう一度登録してください',
+
+  'verified.done': '認証が完了しました。ご利用いただけます',
+  'verified.subtitle': 'メール認証と電話番号のリンクが完了しました',
+  'verified.accountReady': 'アカウントの準備ができました。今後のログインを簡単にするため、今すぐパスキーを登録しましょう（任意・約 30 秒）。',
+  'verified.passkeyTitle': 'パスキーを登録（任意）',
+  'verified.passkeyDesc': 'Touch ID / Windows Hello でワンタッチログイン、パスワード不要。登録すると投稿も解禁されます。',
+  'verified.passkeyCta': 'パスキーを登録（任意）',
+  'verified.backLogin': 'ログインへ戻る',
+  'verified.autoRedirect': '{countdown} 秒後にログインページへ移動します',
 
   'phoneBind.title': '電話番号を確認',
   'phoneBind.subtitle':

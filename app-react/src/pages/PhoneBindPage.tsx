@@ -95,7 +95,7 @@ export default function PhoneBindPage() {
       if (!otpToken) throw new Error(t('phoneBind.missingToken'));
       await phoneBind(session.access_token, otpToken, normalized);
       toast(t('phoneBind.success'), 'success');
-      navigate('/enroll', { replace: true });
+      navigate('/register/verified', { replace: true });
     } catch (e) {
       const err = e as { code?: string; message?: string };
       if (err?.code === 'OTP_EXPIRED') setCodeError({ key: 'error.otpExpired' });
