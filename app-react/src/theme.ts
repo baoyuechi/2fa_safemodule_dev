@@ -1,7 +1,8 @@
 import { createTheme } from '@mui/material/styles';
 
 // 品牌色沿用旧版 app/css/style.css：主色深藏青 #1a3c6e，通行密钥按钮绿 #1e8449。
-// 暗色参考 Google 深色基调（#131314 页面 / #1e1f20 卡片），primary 提亮保证对比度。
+// 暗色采用 Google 深色方案：页面深灰 #1b1b1d、卡片纯黑（比页面更暗形成层次）、
+// 浅蓝 #a8c7fa 主按钮配深色文字、提亮的文字灰阶——可读性优先。
 const BRAND = '#1a3c6e';
 const FIDO_GREEN = '#1e8449';
 
@@ -23,9 +24,12 @@ const theme = createTheme({
     },
     dark: {
       palette: {
-        primary: { main: '#9ec3f5', contrastText: '#0d2137' },
+        primary: { main: '#a8c7fa', contrastText: '#062e6f' },
         success: { main: '#6dd58c', contrastText: '#062b12' },
-        background: { default: '#131314', paper: '#1e1f20' },
+        // 页面深灰 + 卡片纯黑（卡片比页面更暗，Google 深色的层次反转）
+        background: { default: '#1b1b1d', paper: '#0e0e0f' },
+        text: { primary: '#e3e3e3', secondary: '#9aa0a6' },
+        divider: '#444746',
       },
     },
   },
@@ -33,7 +37,7 @@ const theme = createTheme({
   typography: {
     fontFamily:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif',
-    h1: { fontSize: '1.6rem', fontWeight: 500, lineHeight: 1.3 },
+    h1: { fontSize: '2.125rem', fontWeight: 400, lineHeight: 1.35, letterSpacing: '-0.25px' },
     h2: { fontSize: '1.25rem', fontWeight: 500 },
     button: { textTransform: 'none' },
   },
@@ -93,8 +97,19 @@ const theme = createTheme({
       styleOverrides: { root: { borderRadius: RADIUS_PILL } },
     },
     MuiAlert: {
-      // Google 顶部提示条风格：横幅式，圆角适中（非药丸）
-      styleOverrides: { root: { borderRadius: 12 } },
+      // Google 提示横幅风格：圆角适中（非药丸）；暗色下 info 为蓝色填充白字
+      styleOverrides: {
+        root: ({ theme }) => ({
+          borderRadius: 12,
+          ...theme.applyStyles('dark', {
+            '&.MuiAlert-standardInfo': {
+              backgroundColor: '#1558c8',
+              color: '#ffffff',
+              '& .MuiAlert-icon': { color: '#ffffff' },
+            },
+          }),
+        }),
+      },
     },
     MuiAccordion: {
       styleOverrides: {

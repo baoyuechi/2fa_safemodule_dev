@@ -54,7 +54,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
       >
         <Card variant="outlined" sx={{ width: '100%', maxWidth: 900, ...enterFadeUp }}>
           <Stack direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch', minHeight: { md: 400 } }}>
-            {/* 左栏：品牌 + 标题（内容块垂直居中，与右栏输入框平齐，Google 式中部构图） */}
+            {/* 左栏：Logo 固定卡片左上角，标题块垂直居中（Google 式：Logo 与标题间的大留白是设计） */}
             <Box
               sx={{
                 flex: 1,
@@ -62,15 +62,16 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
                 pr: { md: 2 },
                 display: 'flex',
                 flexDirection: 'column',
-                justifyContent: 'center',
               }}
             >
-              <Stack spacing={2.5}>
-                <BrandLogo size={48} />
-                <Typography variant="h1">{title}</Typography>
-                {subtitle && <Typography sx={{ color: 'text.secondary' }}>{subtitle}</Typography>}
-                {leftExtra}
-              </Stack>
+              <BrandLogo size={40} />
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <Stack spacing={2}>
+                  <Typography variant="h1">{title}</Typography>
+                  {subtitle && <Typography sx={{ color: 'text.secondary' }}>{subtitle}</Typography>}
+                  {leftExtra}
+                </Stack>
+              </Box>
             </Box>
 
             {/* 右栏：内容块垂直居中（卡片中部）+ 动作行沉底 */}
