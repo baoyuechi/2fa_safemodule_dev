@@ -153,7 +153,7 @@ export default function PhoneBindPage() {
           <InputError error={phoneError} />
         </Box>
         <Box>
-          <Stack direction="row" spacing={1} alignItems="flex-start">
+          <Stack direction="row" spacing={1} alignItems="center">
             <TextField
               label={t('checkEmail.codeLabel')}
               value={otpCode}
@@ -169,7 +169,7 @@ export default function PhoneBindPage() {
               variant="outlined"
               onClick={handleSendOtp}
               disabled={sendingOtp || countdown > 0}
-              sx={{ whiteSpace: 'nowrap', mt: 0.5 }}
+              sx={{ whiteSpace: 'nowrap' }}
             >
               {sendingOtp ? t('phoneBind.sending') : countdown > 0 ? t('phoneBind.resendIn', { countdown }) : t('phoneBind.send')}
             </Button>
