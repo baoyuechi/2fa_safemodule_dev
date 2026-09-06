@@ -2,6 +2,8 @@ export type Locale = 'zh' | 'en' | 'es' | 'ja';
 
 const zhMessages = {
   'meta.title': '登录 · isaSpectrum',
+  'terms.title': '服务条款',
+  'terms.updated': '生效日期',
 
   'common.help': '帮助',
   'common.privacy': '隐私权',
@@ -195,6 +197,8 @@ export type MessageKey = keyof typeof zhMessages;
 
 const enMessages: Record<MessageKey, string> = {
   'meta.title': 'Sign in · isaSpectrum',
+  'terms.title': 'Terms of Service',
+  'terms.updated': 'Effective date',
 
   'common.help': 'Help',
   'common.privacy': 'Privacy',
@@ -394,6 +398,8 @@ const enMessages: Record<MessageKey, string> = {
 
 const esMessages: Record<MessageKey, string> = {
   'meta.title': 'Iniciar sesión · isaSpectrum',
+  'terms.title': 'Términos del Servicio',
+  'terms.updated': 'Fecha de entrada en vigor',
 
   'common.help': 'Ayuda',
   'common.privacy': 'Privacidad',
@@ -592,6 +598,8 @@ const esMessages: Record<MessageKey, string> = {
 
 const jaMessages: Record<MessageKey, string> = {
   'meta.title': 'ログイン · isaSpectrum',
+  'terms.title': '利用規約',
+  'terms.updated': '発効日',
 
   'common.help': 'ヘルプ',
   'common.privacy': 'プライバシー',

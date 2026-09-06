@@ -187,11 +187,19 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
           })}
           <Box sx={{ px: 2.5, pt: 6 }}>
             <Stack direction="row" spacing={2}>
-              {footerLinks.map((key) => (
-                <Typography key={key} variant="caption" sx={{ color: 'text.secondary' }}>
-                  {t(key)}
-                </Typography>
-              ))}
+              {footerLinks.map((key) =>
+                key === 'common.terms' ? (
+                  <RouterLink key={key} to="/terms" style={{ textDecoration: 'none' }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {t(key)}
+                    </Typography>
+                  </RouterLink>
+                ) : (
+                  <Typography key={key} variant="caption" sx={{ color: 'text.secondary' }}>
+                    {t(key)}
+                  </Typography>
+                ),
+              )}
             </Stack>
           </Box>
         </Stack>

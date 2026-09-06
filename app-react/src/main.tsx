@@ -13,6 +13,7 @@ import VerificationSuccessPage from './pages/VerificationSuccessPage';
 import EnrollPage from './pages/EnrollPage';
 import PhonePage from './pages/PhonePage';
 import SecurityPage from './pages/SecurityPage';
+import TermsPage from './pages/TermsPage';
 
 /**
  * 邮件确认链接按 site_url 回跳到站点根路径，会话在 URL hash 里
@@ -43,6 +44,7 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/enroll" element={<EnrollPage />} />
             <Route path="/phone" element={<PhonePage />} />
             <Route path="/security" element={<SecurityPage />} />
+            <Route path="/terms" element={<TermsPage />} />
             <Route path="/" element={<LandingGate />} />
             <Route path="*" element={<LandingGate />} />
           </Routes>

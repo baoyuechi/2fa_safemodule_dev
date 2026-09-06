@@ -5,6 +5,7 @@ import Card from '@mui/material/Card';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
+import { Link as RouterLink } from 'react-router-dom';
 import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
 import LocaleMenuButton from './LocaleMenuButton';
 import { enterFadeUp, stepFadeUp } from '../shared-theme/motion';
@@ -113,11 +114,23 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
       >
         <LocaleMenuButton />
         <Stack direction="row" spacing={{ xs: 2, sm: 4 }}>
-          {footerLinks.map((key) => (
-            <Button key={key} size="small" disabled sx={{ minWidth: 0, p: 0 }}>
-              {t(key)}
-            </Button>
-          ))}
+          {footerLinks.map((key) =>
+            key === 'common.terms' ? (
+              <Button
+                key={key}
+                size="small"
+                component={RouterLink}
+                to="/terms"
+                sx={{ minWidth: 0, p: 0 }}
+              >
+                {t(key)}
+              </Button>
+            ) : (
+              <Button key={key} size="small" disabled sx={{ minWidth: 0, p: 0 }}>
+                {t(key)}
+              </Button>
+            ),
+          )}
         </Stack>
       </Box>
     </Box>
