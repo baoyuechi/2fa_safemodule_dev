@@ -6,6 +6,7 @@
 //   userHandle↔credentialId 双重核对；UV 位=1（底线）；counter 检查（Touch ID 恒 0
 //   豁免，stored>0 才比较）；BE 不可变校验；suspended 凭据拒；service_role
 //   generate_link 出一次性 token_hash 供前端兑换标准会话。
+//   G2: clientDataJSON.crossOrigin=true 拒绝；D1: 同一凭据 15min ≤ N 次（429）。
 //
 // 挑战定位（对 login-options 实现约定的兑现）：decoy/discovery 挑战行 user_id 为空，
 //   故以 clientDataJSON.challenge 精确匹配未消费 login 行，而非按 email/user_id 查。
@@ -18,6 +19,7 @@
 //   400 CREDENTIAL_NOT_FOUND 凭据不存在（含已吊销）/userHandle 不匹配/邮箱与凭据属主不符
 //   400 CREDENTIAL_SUSPENDED 凭据级或账号级挂起（FR-6.3）
 //   400 INVALID_SIGNATURE    验签/UV/origin/rpID/BE/counter 任一失败（原始原因仅入日志）
+//   429 RATE_LIMITED         同一凭据尝试过于频繁
 //   500 FALLBACK             未预期错误
 // ============================================================================
 
@@ -58,10 +60,27 @@ export async function handleLoginVerify(req: Request): Promise<Response> {
   );
 
   try {
+    // ── 1.5 D1 限速：同一凭据 15min ≤ N 次（按凭据限，不按 IP——防校园网 NAT 误伤）──
+    const { data: attempts, error: rlErr } = await admin.rpc('rate_limit_check', {
+      p_key: `login_verify:${resp.id}`,
+      p_window: '15 minutes',
+    });
+    if (rlErr) throw rlErr;
+    if ((attempts ?? 0) > config.rateLimits.loginVerifyAttemptsPer15Min) {
+      return json(req, { ok: false, code: 'RATE_LIMITED' }, 429);
+    }
+
     // ── 2. 解析 clientDataJSON，按挑战串定位未消费 login 挑战行 ──
     let challengeStr: string;
     try {
-      challengeStr = JSON.parse(new TextDecoder().decode(base64urlDecode(resp.response.clientDataJSON as string))).challenge;
+      const cdj = JSON.parse(
+        new TextDecoder().decode(base64urlDecode(resp.response.clientDataJSON as string)),
+      ) as { challenge?: unknown; crossOrigin?: unknown };
+      // G2：crossOrigin=true 一律拒绝（本站无 iframe 嵌入场景）
+      if (cdj?.crossOrigin === true) {
+        return json(req, { ok: false, code: 'INVALID_RESPONSE' }, 400);
+      }
+      challengeStr = cdj.challenge as string;
     } catch {
       return json(req, { ok: false, code: 'FALLBACK' }, 400);
     }

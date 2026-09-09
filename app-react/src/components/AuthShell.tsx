@@ -52,7 +52,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
           py: 3,
         }}
       >
-        <Card sx={{ width: '100%', maxWidth: 900, mb: { xs: 4, md: '36px' }, ...enterFadeUp }}>
+        <Card sx={{ width: '100%', maxWidth: 900, mb: { xs: 2, md: '16px' }, ...enterFadeUp }}>
           <Stack direction={{ xs: 'column', md: 'row' }} sx={{ alignItems: 'stretch', minHeight: { md: 400 } }}>
             {/* 左栏：Logo → 标题 → 账户选择器 顶对齐依次排布（Google 式） */}
             <Box
@@ -65,7 +65,7 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
               }}
             >
               <Stack spacing={2}>
-                <BrandLogo size={48} />
+                <BrandLogo size={72} />
                 <Typography variant="h1">{title}</Typography>
                 {subtitle && <Typography sx={{ color: 'text.secondary' }}>{subtitle}</Typography>}
                 {leftExtra}
@@ -107,6 +107,8 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
             alignItems: 'center',
             flexWrap: 'wrap',
             gap: 1,
+            // 页脚整排字号略大于 small 默认值（13px → 14px），统一覆盖语言按钮与链接按钮
+            '& .MuiButton-sizeSmall': { fontSize: '0.875rem' },
             ...enterFadeUp,
             animationDelay: '0.1s',
           }}
@@ -140,7 +142,14 @@ export default function AuthShell({ title, subtitle, leftExtra, children, action
 /** 底部动作行：左侧次操作（text），右侧主操作（filled 药丸） */
 export function AuthActions({ secondary, primary }: { secondary?: React.ReactNode; primary: React.ReactNode }) {
   return (
-    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
+    <Box
+      sx={{
+        display: 'flex',
+        justifyContent: secondary ? 'space-between' : 'flex-end',
+        alignItems: 'center',
+        gap: 1,
+      }}
+    >
       {secondary}
       {primary}
     </Box>

@@ -125,3 +125,35 @@ In-app Browser 无平台认证器，仪式会静默降级——与设计一致�
    构建有单 chunk >500kB 警告，如在意可按路由做 `React.lazy` 代码分割；
 3. 生产 rpID/origin 回落 `mfa.config.js` 定值；`corsAllowOrigins` 收敛为业务域；
 4. 路由为 history 模式，若部署在子路径需给 `BrowserRouter` 加 `basename`。
+
+## Turnstile 人机验证与找回密码（备忘）
+
+- 前后端配置均已环境变量化：前端 `VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY / VITE_TURNSTILE_SITE_KEY`
+  （`.env.development` 本地值 / `.env.production` 生产值，生产值启用前需与站主确认）；
+  后端 `TURNSTILE_SECRET` 在 `supabase/.env`（本地 = CF 测试 secret，总是通过）与
+  `supabase/functions/.env`（Edge Function siteverify 用），生产用
+  `supabase secrets set TURNSTILE_SECRET=<正式值>`。
+- **三档落点（关键，勿被字面误导）**：CF 的 Managed / Non-Interactive / Invisible 是
+  **在 Cloudflare 后台建 widget 时选定的单一模式**，前端 `appearance/execution` 只是渲染细节。
+  本站目标「后台无感为主、风控怀疑才弹框」唯一正确的做法是——CF 后台 widget 模式设为
+  **Managed**（它在无感与 checkbox 弹框间按风控自动切换）+ 前端 `appearance:'interaction-only'`
+  + `execution:'render'`（组件 `Turnstile.tsx` 已显式声明）。Invisible 永不弹框、
+  Non-Interactive 常显 spinner，均与目标冲突，不可选。改 widget 模式需在 CF 后台操作。
+- 校验结构：登录/注册/邮箱找回的 token 由 GoTrue `[auth.captcha]`（config.toml，provider=turnstile）
+  服务端校验；`phone/send-otp` 在函数内调 siteverify；`phone/reset-password` 不重复校验
+  （契约：Turnstile 前置于 send-otp，第二步凭已核销 OTP 改密）。覆盖清单见
+  `supabase/functions/_shared/turnstile.ts` 头注释。
+- 找回密码：`/forgot-password` 双路径。邮箱 = GoTrue recover + 6 位码 verify + PUT /user；
+  手机 = `send-otp purpose=recovery`（Turnstile）+ `phone/reset-password`（函数内核销 OTP + admin 改密）。
+- 本地实测注意：Turnstile 为无感模式（`appearance: 'interaction-only'`，页面不显示验证框，
+  仅 CF 风控要求交互时才内联弹出），token 后台签发需 1-2 秒。登录页 Turnstile 已**页面进场即
+  挂载渲染**（全步骤常驻），确保校验在提交前完成。若撞上「请先完成人机验证」红字，多为以下两种：
+  ① Safari ITP（控制台可见 `Tracking Prevention blocked access to storage for challenges.cloudflare.com`）——需用户点击
+  widget 内弹出的勾选框解锁 Storage 才签发 token（Managed 模式交互弹框的正常行为，早渲染 + 弹框
+  视觉提示已尽量放大被点击机会）；② api.js 加载失败（challenges.cloudflare.com 被网络/广告拦截），
+  组件会自动重试挑战，仍失败只能刷新重试。
+- **生产就绪清单**：① CF 后台确认 widget 模式 = Managed、域名白名单含 `celestivast.com`
+  （及任意登录子域）；② `.env.production` 换正式 `VITE_TURNSTILE_SITE_KEY`；③ `supabase secrets set
+  TURNSTILE_SECRET=<正式值>`；④ 如启 Invisible 才需在隐私政策引用 CF Turnstile 隐私附录
+  （Managed/Non-Interactive 不需要，本站用 Managed 故略）；⑤ 正式 key 全量回归四链路
+  （登录/注册/手机绑定/找回密码），确认无感签发与弹框时机符合预期。

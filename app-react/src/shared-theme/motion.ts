@@ -41,3 +41,32 @@ export const toastIn = {
   ...fadeUpKeyframes,
   animation: `mfaToastIn 0.3s ${EASE_EMPHASIS} both`,
 };
+
+/** 加速缓动（先慢后快）：程序化滚动动画用 ease-in */
+export const easeInCubic = (p: number) => p * p * p;
+
+/** 先慢后快再慢：滚动动画用 ease-in-out */
+export const easeInOutCubic = (p: number) => (p < 0.5 ? 4 * p * p * p : 1 - (-2 * p + 2) ** 3 / 2);
+
+let activeScrollRaf = 0;
+
+/** 变速滚动：从当前位置滚到目标 Y（默认回到顶部）。
+ *  ease-in-out 曲线 → 起步慢、中段快、结尾慢；减弱动效偏好时直接跳到目标。 */
+export function animatedScrollTo(targetY = 0, durationMs = 750) {
+  if (typeof window === 'undefined') return;
+  if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+    window.scrollTo(0, targetY);
+    return;
+  }
+  const startY = window.scrollY;
+  const distance = targetY - startY;
+  if (distance === 0) return;
+  cancelAnimationFrame(activeScrollRaf);
+  const start = performance.now();
+  const step = (now: number) => {
+    const p = Math.min((now - start) / durationMs, 1);
+    window.scrollTo(0, startY + distance * easeInOutCubic(p));
+    if (p < 1) activeScrollRaf = requestAnimationFrame(step);
+  };
+  activeScrollRaf = requestAnimationFrame(step);
+}

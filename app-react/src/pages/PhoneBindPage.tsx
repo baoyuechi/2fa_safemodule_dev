@@ -11,6 +11,8 @@ import EmailPill from '../components/EmailPill';
 import InputError from '../components/InputError';
 import type { InputErrorInfo } from '../components/InputError';
 import PageLoader from '../components/PageLoader';
+import Turnstile from '../components/Turnstile';
+import type { TurnstileHandle } from '../components/Turnstile';
 import { useI18n } from '../i18n/LocaleContext';
 import {
   clearSession,
@@ -39,6 +41,9 @@ export default function PhoneBindPage() {
   // 行内字段错误（InputError 红字），输入即清除
   const [phoneError, setPhoneError] = React.useState<InputErrorInfo | null>(null);
   const [codeError, setCodeError] = React.useState<InputErrorInfo | null>(null);
+  // Turnstile：send-otp 契约"无认证+Turnstile"，token 一次性 → 每次发送前重新挑战
+  const [captchaToken, setCaptchaToken] = React.useState('');
+  const turnstileRef = React.useRef<TurnstileHandle>(null);
 
   // 会话守卫：未确认邮箱 / 会话失效 → 回登录页（邮箱验证成功才有会话）
   React.useEffect(() => {
@@ -67,10 +72,11 @@ export default function PhoneBindPage() {
     const normalized = phone.replace(/[\s-]/g, '');
     if (!PHONE_RE.test(normalized)) return setPhoneError({ key: 'phoneBind.phoneInvalid' });
     if (sendingOtp || countdown > 0) return; // 请求飞行中禁用，防双击双发耗 24h 限 5 条配额
+    if (!captchaToken) return setPhoneError({ key: 'error.captchaRequired' });
     setPhoneError(null);
     setSendingOtp(true);
     try {
-      await sendOtp(normalized);
+      await sendOtp(normalized, captchaToken);
       toast(t('phoneBind.otpSent'), 'success');
       setCountdown(60);
     } catch (e) {
@@ -78,6 +84,9 @@ export default function PhoneBindPage() {
       if (err?.code === 'PHONE_TAKEN') setPhoneError({ key: 'phoneBind.phoneTaken' });
       else handleError(e); // RATE_LIMITED 等与字段无关 → Toast
     } finally {
+      // token 已被 send-otp 消费：无论成败，重发前都需重新人机验证
+      setCaptchaToken('');
+      turnstileRef.current?.reset();
       setSendingOtp(false);
     }
   }
@@ -176,6 +185,8 @@ export default function PhoneBindPage() {
           </Stack>
           <InputError error={codeError} />
         </Box>
+        {/* 人机验证：发送验证码前需完成（每次发送消耗一个 token） */}
+        <Turnstile ref={turnstileRef} onToken={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
       </Stack>
 
       <Typography variant="caption" sx={{ color: 'text.secondary' }}>

@@ -1,9 +1,13 @@
+import * as React from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import Divider from '@mui/material/Divider';
+import Fab from '@mui/material/Fab';
+import Fade from '@mui/material/Fade';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
+import KeyboardArrowUpRoundedIcon from '@mui/icons-material/KeyboardArrowUpRounded';
 import { useNavigate } from 'react-router-dom';
 import IconButton from '@mui/material/IconButton';
 import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
@@ -11,7 +15,7 @@ import BrandLogo from '../components/BrandLogo';
 import LocaleMenuButton from '../components/LocaleMenuButton';
 import { useI18n } from '../i18n/LocaleContext';
 import { termsContent } from '../i18n/terms';
-import { cascadeUp } from '../shared-theme/motion';
+import { animatedScrollTo, cascadeUp } from '../shared-theme/motion';
 
 /** 服务条款文档页：公开路由（/terms），四语内容，随当前语言切换。
  *  入场动效：标题 → 简介 → 各节按序瀑布式向下铺开（stagger 70ms）。 */
@@ -19,6 +23,14 @@ export default function TermsPage() {
   const navigate = useNavigate();
   const { locale, t } = useI18n();
   const content = termsContent[locale] ?? termsContent.en;
+  // 回到顶部按钮：滚过一屏后出现
+  const [showTop, setShowTop] = React.useState(false);
+  React.useEffect(() => {
+    const onScroll = () => setShowTop(window.scrollY > 480);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
@@ -56,7 +68,7 @@ export default function TermsPage() {
           </Typography>
         </Box>
         <Box sx={{ ...cascadeUp(0.08), mt: 2 }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary', whiteSpace: 'pre-line' }}>
+          <Typography variant="body1" sx={{ color: 'text.secondary', whiteSpace: 'pre-line', lineHeight: 1.9 }}>
             {content.intro}
           </Typography>
         </Box>
@@ -65,7 +77,7 @@ export default function TermsPage() {
           <Box key={section.title} component="section" sx={{ ...cascadeUp(0.18 + index * 0.07), mt: 4 }}>
             <Typography variant="h2">{section.title}</Typography>
             {section.paragraphs.map((paragraph, pIndex) => (
-              <Typography key={pIndex} variant="body2" sx={{ mt: 1, whiteSpace: 'pre-line' }}>
+              <Typography key={pIndex} variant="body1" sx={{ mt: 1.5, whiteSpace: 'pre-line', lineHeight: 1.9 }}>
                 {paragraph}
               </Typography>
             ))}
@@ -79,6 +91,19 @@ export default function TermsPage() {
           </Typography>
         </Box>
       </Container>
+
+      {/* 回到顶部：点击后加速（先慢后快）滚回顶部 */}
+      <Fade in={showTop}>
+        <Fab
+          size="medium"
+          color="primary"
+          aria-label={t('terms.backToTop')}
+          onClick={() => animatedScrollTo(0, 1000)}
+          sx={{ position: 'fixed', right: { xs: 16, sm: 24 }, bottom: { xs: 16, sm: 24 }, zIndex: 20 }}
+        >
+          <KeyboardArrowUpRoundedIcon />
+        </Fab>
+      </Fade>
     </Box>
   );
 }

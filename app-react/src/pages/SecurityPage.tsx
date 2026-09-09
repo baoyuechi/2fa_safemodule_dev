@@ -3,6 +3,7 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
 import Divider from '@mui/material/Divider';
 import ListItemButton from '@mui/material/ListItemButton';
 import Stack from '@mui/material/Stack';
@@ -12,64 +13,50 @@ import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import LockRoundedIcon from '@mui/icons-material/LockRounded';
 import MailRoundedIcon from '@mui/icons-material/MailRounded';
 import SmsRoundedIcon from '@mui/icons-material/SmsRounded';
+import AlternateEmailRoundedIcon from '@mui/icons-material/AlternateEmailRounded';
 import VerifiedUserRoundedIcon from '@mui/icons-material/VerifiedUserRounded';
-import { Link as RouterLink, useNavigate } from 'react-router-dom';
-import AccountShell from '../components/AccountShell';
-import PageLoader from '../components/PageLoader';
+import { Link as RouterLink } from 'react-router-dom';
+import { useAccount } from '../components/AccountLayout';
 import { useI18n } from '../i18n/LocaleContext';
-import {
-  clearSession,
-  fetchSessionUser,
-  getEnrollment,
-  getSession,
-  signOut,
-  toast,
-} from '../api/mfaClient';
-import type { MfaUser } from '../api/mfaClient';
+import { getAccountSecurityStatus, getEnrollment, getSession, handleError } from '../api/mfaClient';
 
-/** 图 1 风格的「安全性与登录」账户页：登录选项分组卡 + 状态 Chip + 彩色圆标侧边栏。 */
+/** 图 1 风格的「安全性与登录」账户页：登录选项分组卡 + 状态 Chip；内容仅本页数据，壳由布局路由常驻。 */
 export default function SecurityPage() {
-  const navigate = useNavigate();
+  const { user, logout } = useAccount();
   const { t } = useI18n();
-  const [user, setUser] = React.useState<MfaUser | null>(null);
+  const [loading, setLoading] = React.useState(true);
   const [enrolled, setEnrolled] = React.useState(false);
-  const [busyLogout, setBusyLogout] = React.useState(false);
+  const [hasPhone, setHasPhone] = React.useState(false);
+  const [hasSecondaryEmail, setHasSecondaryEmail] = React.useState(false);
 
   React.useEffect(() => {
     void (async () => {
       const session = getSession();
-      if (!session?.access_token) {
-        navigate('/login', { replace: true });
-        return;
-      }
       try {
-        setUser(await fetchSessionUser(session.access_token));
-        setEnrolled(await getEnrollment(session.access_token));
-      } catch {
-        clearSession();
-        navigate('/login', { replace: true });
+        if (session?.access_token) {
+          setEnrolled(await getEnrollment(session.access_token));
+          const status = await getAccountSecurityStatus(session.access_token);
+          setHasPhone(status.hasPhone);
+          setHasSecondaryEmail(status.hasSecondaryEmail);
+        }
+      } catch (e) {
+        handleError(e);
+      } finally {
+        setLoading(false);
       }
     })();
-  }, [navigate]);
+  }, []);
 
-  async function doLogout() {
-    const session = getSession();
-    setBusyLogout(true);
-    try {
-      if (session?.access_token) await signOut(session.access_token);
-    } catch {
-      /* 登出失败也照常清本地 */
-    } finally {
-      clearSession();
-      toast(t('common.signedOut'), 'info');
-      navigate('/login', { replace: true });
-    }
+  if (loading) {
+    return (
+      <Box sx={{ display: 'grid', placeItems: 'center', py: 8 }}>
+        <CircularProgress size={28} />
+      </Box>
+    );
   }
 
-  if (!user) return <PageLoader />; // 守卫跳转中：统一加载占位，避免白屏闪现
-
   return (
-    <AccountShell active="security" user={user} onLogout={doLogout}>
+    <>
       <Typography variant="h1">{t('nav.security')}</Typography>
 
       {/* 安全状态卡 */}
@@ -97,7 +84,7 @@ export default function SecurityPage() {
           {t('security.keepUpdated')}
         </Typography>
       </Box>
-      <Card variant="outlined" sx={{ py: 0.5 }}>
+      <Card variant="outlined">
         <ListItemButton
           component={RouterLink}
           to="/enroll"
@@ -119,8 +106,8 @@ export default function SecurityPage() {
           />
           <ChevronRightRoundedIcon sx={{ color: 'text.secondary' }} />
         </ListItemButton>
-        <Divider component="li" />
-        <ListItemButton sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0, cursor: 'default' }}>
+        <Divider />
+        <ListItemButton component={RouterLink} to="/security/password" sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}>
           <LockRoundedIcon sx={{ mr: 2.5, color: 'text.secondary' }} />
           <Box sx={{ flex: 1 }}>
             <Typography>{t('security.passwordName')}</Typography>
@@ -129,9 +116,14 @@ export default function SecurityPage() {
             </Typography>
           </Box>
           <Chip label={t('security.passwordSet')} size="small" variant="outlined" sx={{ mr: 1 }} />
+          <ChevronRightRoundedIcon sx={{ color: 'text.secondary' }} />
         </ListItemButton>
-        <Divider component="li" />
-        <ListItemButton sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}>
+        <Divider />
+        <ListItemButton
+          component={RouterLink}
+          to="/security/phone/rebind"
+          sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}
+        >
           <SmsRoundedIcon sx={{ mr: 2.5, color: 'success.main' }} />
           <Box sx={{ flex: 1 }}>
             <Typography>{t('security.phoneName')}</Typography>
@@ -139,7 +131,35 @@ export default function SecurityPage() {
               {t('security.phoneDesc')}
             </Typography>
           </Box>
-          <Chip label={t('security.phoneLinked')} size="small" variant="outlined" sx={{ mr: 1 }} />
+          <Chip
+            label={hasPhone ? t('security.phoneLinked') : t('security.phoneNotLinked')}
+            size="small"
+            variant="outlined"
+            sx={{ mr: 1 }}
+          />
+          <ChevronRightRoundedIcon sx={{ color: 'text.secondary' }} />
+        </ListItemButton>
+        <Divider />
+        <ListItemButton
+          component={RouterLink}
+          to="/security/email"
+          sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}
+        >
+          <AlternateEmailRoundedIcon sx={{ mr: 2.5, color: 'text.secondary' }} />
+          <Box sx={{ flex: 1 }}>
+            <Typography>{t('security.secondaryEmailName')}</Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {t('security.secondaryEmailDesc')}
+            </Typography>
+          </Box>
+          <Chip
+            label={hasSecondaryEmail ? t('security.secondaryEmailSet') : t('security.secondaryEmailNone')}
+            size="small"
+            color={hasSecondaryEmail ? 'success' : 'warning'}
+            variant={hasSecondaryEmail ? 'filled' : 'outlined'}
+            sx={{ mr: 1 }}
+          />
+          <ChevronRightRoundedIcon sx={{ color: 'text.secondary' }} />
         </ListItemButton>
       </Card>
 
@@ -147,7 +167,7 @@ export default function SecurityPage() {
       <Box>
         <Typography variant="h2">{t('security.yourAccount')}</Typography>
       </Box>
-      <Card variant="outlined" sx={{ py: 0.5 }}>
+      <Card variant="outlined">
         <ListItemButton sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0, cursor: 'default' }}>
           <MailRoundedIcon sx={{ mr: 2.5, color: 'text.secondary' }} />
           <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -157,8 +177,8 @@ export default function SecurityPage() {
             </Typography>
           </Box>
         </ListItemButton>
-        <Divider component="li" />
-        <ListItemButton onClick={doLogout} disabled={busyLogout} sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}>
+        <Divider />
+        <ListItemButton onClick={logout} sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}>
           <Box sx={{ flex: 1 }}>
             <Typography>{t('auth.signOut')}</Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
@@ -167,6 +187,6 @@ export default function SecurityPage() {
           </Box>
         </ListItemButton>
       </Card>
-    </AccountShell>
+    </>
   );
 }

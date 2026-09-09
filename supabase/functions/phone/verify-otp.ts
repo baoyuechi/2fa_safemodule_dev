@@ -19,7 +19,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { config } from '../_shared/mfa.config.js';
 import { json } from '../_shared/http.ts';
-import { normalizePhone, otpSecretHash, phoneHash } from '../_shared/phone.ts';
+import { claimOtp, normalizePhone, phoneHash } from '../_shared/phone.ts';
 
 const CODE_SHAPE = /^\d{6}$/;
 
@@ -56,35 +56,13 @@ export async function handleVerifyOtp(req: Request): Promise<Response> {
       return json(req, { ok: false, code: 'RATE_LIMITED' }, 429);
     }
 
-    // 取该手机号全部未消费且未过期的码，逐一哈希比对
-    const expected = `\\x${await otpSecretHash(phone, code)}`;
-    const { data: tokens, error: selErr } = await admin
-      .from('otp_tokens')
-      .select('id, secret_hash')
-      .eq('subject', hash)
-      .eq('purpose', 'phone_otp')
-      .eq('consumed', false)
-      .gt('expires_at', new Date().toISOString());
-    if (selErr) throw selErr;
-
-    const match = (tokens ?? []).find((t) => t.secret_hash === expected);
-    if (!match) {
+    // 共享核销逻辑：比对 + 原子消费（claimOtp 内部不可区分失败，防枚举）
+    const otpToken = await claimOtp(admin, phone, code);
+    if (!otpToken) {
       return json(req, { ok: false, code: 'OTP_EXPIRED' });
     }
 
-    // 原子认领：并发验证同一码时只有一个请求能成功（防重放竞态）
-    const { data: claimed, error: updErr } = await admin
-      .from('otp_tokens')
-      .update({ consumed: true })
-      .eq('id', match.id)
-      .eq('consumed', false)
-      .select('id');
-    if (updErr) throw updErr;
-    if (!claimed || claimed.length === 0) {
-      return json(req, { ok: false, code: 'OTP_EXPIRED' });
-    }
-
-    return json(req, { ok: true, otpToken: match.id });
+    return json(req, { ok: true, otpToken });
   } catch (e) {
     console.error('[phone/verify-otp]', e);
     return json(req, { ok: false, code: 'FALLBACK' }, 500);

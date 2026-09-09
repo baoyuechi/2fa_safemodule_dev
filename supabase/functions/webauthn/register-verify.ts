@@ -1,18 +1,20 @@
 // ============================================================================
 // L0 端点 6/12 · webauthn/register-verify（处理器，由 webauthn/index.ts 分发）
 //
-// 契约（design/05-数据库与API契约.md §三）：POST · 会话 · {response} → {verified}
+// 契约（design/05-数据库与API契约.md §三）：POST · 会话 · {response} → {verified, recoveryCodes?}
 //   G1: requireUserVerification=true（UV 位必须=1 → uvInitialized=true）；
+//   G2: clientDataJSON.crossOrigin=true 拒绝；
 //   G4: credentialId ≤1023 字节 + 全局唯一（主键）；
-//   G7: expectedChallenge 与暂存精确比对、单次有效（原子认领防并发重放）。
+//   G7: expectedChallenge 与暂存精确比对、单次有效（原子认领防并发重放）；
+//   G8: 凭据公钥 alg ∈ 白名单（offer 侧只提供白名单 + verify 侧 COSE 断言）。
 //   验证成功后：凭据入库 + mfa_enrollments.enabled=true（FR-8 门槛判据）。
-//   （恢复码批次生成属契约同端点职责，待 recovery_codes 表迁移落地后补齐。）
+//   恢复码：用户尚无有效批次时签发首批（10 条，明文仅此一次返回前端展示）。
 //
 // 认证：端点默认 verify_jwt=true；userId 请求体字段仅作契约兼容——必须与
 //   JWT 会话用户一致（防冒用），否则 403。
 //
 // 响应：
-//   200 {ok:true, credentialId}       验证通过并入库
+//   200 {ok:true, credentialId, recoveryCodes?}  验证通过并入库；首绑附带首批恢复码明文
 //   400 {ok:false, code:'INVALID_CHALLENGE'}  挑战缺失/过期/已消费
 //   400 {ok:false, code:'INVALID_RESPONSE'}   origin/rpID/格式/标志位校验失败
 //   400 {ok:false, code:'UV_REQUIRED'}        UV 位未置 1（G1）
@@ -27,7 +29,8 @@ import {
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { config } from '../_shared/mfa.config.js';
 import { guard, json } from '../_shared/http.ts';
-import { base64urlDecode, bytesToHex } from '../_shared/crypto.ts';
+import { base64urlDecode, bytesToHex, readCoseAlg } from '../_shared/crypto.ts';
+import { issueRecoveryBatch } from '../_shared/recovery.ts';
 
 const PURPOSES = new Set(['enroll', 'rebind']);
 
@@ -72,6 +75,22 @@ export async function handleRegisterVerify(req: Request): Promise<Response> {
     typeof (resp as { response?: { attestationObject?: unknown } }).response?.attestationObject !== 'string'
   ) {
     return json(req, { ok: false, code: 'FALLBACK' }, 400);
+  }
+
+  // G2：clientDataJSON.crossOrigin=true 一律拒绝（本站无 iframe 嵌入场景）
+  try {
+    const cdj = JSON.parse(
+      new TextDecoder().decode(
+        base64urlDecode(
+          (resp as { response: { clientDataJSON: string } }).response.clientDataJSON,
+        ),
+      ),
+    ) as { crossOrigin?: unknown };
+    if (cdj?.crossOrigin === true) {
+      return json(req, { ok: false, code: 'INVALID_RESPONSE' }, 400);
+    }
+  } catch {
+    // 解析失败交给验签环节处理（其 INVALID_RESPONSE 语义不变）
   }
 
   const admin = createClient(
@@ -131,6 +150,12 @@ export async function handleRegisterVerify(req: Request): Promise<Response> {
     if (cred.uvInitialized === false) {
       return json(req, { ok: false, code: 'UV_REQUIRED' });
     }
+    // G8：断言凭据公钥算法在白名单内（offer 侧已只提供白名单，此处防手工构造响应绕过）
+    const coseAlg = readCoseAlg(cred.publicKey);
+    if (coseAlg === null || !config.webauthn.allowedAlgorithms.includes(coseAlg)) {
+      console.warn('[webauthn/register-verify] alg not allowed:', coseAlg);
+      return json(req, { ok: false, code: 'INVALID_RESPONSE' });
+    }
 
     // ── 5. 原子认领挑战（单次有效；并发重放只有一个成功）──
     const { data: claimed, error: claimErr } = await admin
@@ -176,7 +201,31 @@ export async function handleRegisterVerify(req: Request): Promise<Response> {
       .upsert({ user_id: user.id, enabled: true }, { onConflict: 'user_id' });
     if (upErr) throw upErr;
 
-    return json(req, { ok: true, credentialId: cred.id });
+    // ── 8. 恢复码首批：尚无有效批次才签发（重绑不重复发，旧码继续有效）──
+    //   明文仅此一次返回，前端"仅显示一次"面板展示后即丢弃。
+    let recoveryCodes: string[] | undefined;
+    const { data: enrollRow } = await admin
+      .from('mfa_enrollments')
+      .select('recovery_batch')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    const curBatch = (enrollRow as { recovery_batch?: number } | null)?.recovery_batch ?? 0;
+    let hasLiveBatch = false;
+    if (curBatch > 0) {
+      const { data: live } = await admin
+        .from('recovery_codes')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('batch', curBatch)
+        .is('used_at', null)
+        .limit(1);
+      hasLiveBatch = ((live as Array<unknown> | null)?.length ?? 0) > 0;
+    }
+    if (!hasLiveBatch) {
+      recoveryCodes = await issueRecoveryBatch(admin, user.id);
+    }
+
+    return json(req, { ok: true, credentialId: cred.id, ...(recoveryCodes ? { recoveryCodes } : {}) });
   } catch (e) {
     console.error('[webauthn/register-verify]', e);
     return json(req, { ok: false, code: 'FALLBACK' }, 500);

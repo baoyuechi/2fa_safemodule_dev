@@ -1,16 +1,17 @@
 // ============================================================================
 // L0 端点组 · phone/*（Part 5 §三：2 phone/send-otp、3 phone/verify-otp、
-// 4 phone/bind 归入此组）
+// 4 phone/bind 归入此组；4b phone/reset-password 为找回密码扩展端点）
 //
 // 说明：Supabase CLI 函数名仅允许 [A-Za-z0-9_-]（不支持斜杠），故契约路径
-// phone/send-otp、phone/verify-otp、phone/bind 由本函数按 pathname 后缀还原分发；
-// 处理器分文件维护，与契约表格逐一对应，L0 对外路径不变。
+// phone/send-otp、phone/verify-otp、phone/bind、phone/reset-password 由本函数
+// 按 pathname 后缀还原分发；处理器分文件维护，与契约表格逐一对应，L0 对外路径不变。
 // ============================================================================
 
 import { guard, json } from '../_shared/http.ts';
 import { handleSendOtp } from './send-otp.ts';
 import { handleVerifyOtp } from './verify-otp.ts';
 import { handleBind } from './bind.ts';
+import { handleResetPassword } from './reset-password.ts';
 
 Deno.serve(async (req) => {
   const denied = guard(req);
@@ -20,6 +21,7 @@ Deno.serve(async (req) => {
   if (path.endsWith('/phone/send-otp')) return handleSendOtp(req);
   if (path.endsWith('/phone/verify-otp')) return handleVerifyOtp(req);
   if (path.endsWith('/phone/bind')) return handleBind(req);
+  if (path.endsWith('/phone/reset-password')) return handleResetPassword(req);
 
   return json(req, { ok: false, code: 'FALLBACK' }, 404);
 });

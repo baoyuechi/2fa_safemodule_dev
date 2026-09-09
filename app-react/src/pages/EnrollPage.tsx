@@ -10,61 +10,38 @@ import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
 import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import { useNavigate } from 'react-router-dom';
-import AccountShell from '../components/AccountShell';
-import PageLoader from '../components/PageLoader';
+import { useAccount } from '../components/AccountLayout';
+import RecoveryCodesPanel from '../components/RecoveryCodesPanel';
 import { useI18n } from '../i18n/LocaleContext';
 import {
-  clearSession,
-  fetchSessionUser,
   getEnrollment,
   getSession,
   handleError,
-  signOut,
   startPasskeyRegistration,
   submitPasskeyRegistration,
   toast,
 } from '../api/mfaClient';
-import type { MfaUser } from '../api/mfaClient';
 
 /** 通行密钥管理页（图 2 风格）：返回箭头 + 说明 + 「创建通行密钥」药丸 + 凭据列表卡。 */
 export default function EnrollPage() {
   const navigate = useNavigate();
+  const { user } = useAccount();
   const { t } = useI18n();
-  const [user, setUser] = React.useState<MfaUser | null>(null);
   const [enrolled, setEnrolled] = React.useState(false);
   const [lastCredentialId, setLastCredentialId] = React.useState<string | null>(null);
   const [busy, setBusy] = React.useState(false);
   const [status, setStatus] = React.useState('');
+  // 首绑服务端附带首批恢复码明文（仅此一次、仅存内存）：展示后即丢弃，重进/重登不再出现
+  const [freshCodes, setFreshCodes] = React.useState<string[] | null>(null);
 
-  // 会话守卫：未登录 / 会话失效 → 回登录页
+  // 会话守卫与头像档案由布局路由承担；本页只取绑定状态
   React.useEffect(() => {
-    void (async () => {
-      const session = getSession();
-      if (!session?.access_token) {
-        navigate('/login', { replace: true });
-        return;
-      }
-      try {
-        setUser(await fetchSessionUser(session.access_token));
-        setEnrolled(await getEnrollment(session.access_token));
-      } catch {
-        clearSession();
-        navigate('/login', { replace: true });
-      }
-    })();
-  }, [navigate]);
-
-  async function doLogout() {
     const session = getSession();
-    try {
-      if (session?.access_token) await signOut(session.access_token);
-    } catch {
-      /* 照常清本地 */
-    } finally {
-      clearSession();
-      navigate('/login', { replace: true });
-    }
-  }
+    if (!session?.access_token) return;
+    void getEnrollment(session.access_token)
+      .then(setEnrolled)
+      .catch((e) => handleError(e));
+  }, []);
 
   // 绑定仪式：register-options → 浏览器弹指纹 → register-verify → 入库 + enabled=true
   async function handleCreate() {
@@ -75,10 +52,11 @@ export default function EnrollPage() {
     try {
       const { attestation } = await startPasskeyRegistration(session.access_token, 'enroll');
       setStatus(t('enroll.serverVerifying'));
-      const { credentialId } = await submitPasskeyRegistration(session.access_token, attestation);
+      const { credentialId, recoveryCodes } = await submitPasskeyRegistration(session.access_token, attestation);
       // 成功（服务端已置 mfa_enrollments.enabled=true）
       setLastCredentialId(credentialId);
       setEnrolled(true);
+      if (recoveryCodes?.length) setFreshCodes(recoveryCodes);
       setStatus('');
       toast(t('enroll.success'), 'success');
     } catch (e) {
@@ -89,10 +67,10 @@ export default function EnrollPage() {
     }
   }
 
-  if (!user) return <PageLoader />; // 守卫跳转中：统一加载占位，避免白屏闪现
+  if (!user) return null; // 布局守卫加载中（秒级），不出半截内容
 
   return (
-    <AccountShell active="passkeys" user={user} onLogout={doLogout}>
+    <>
       {/* 内容头：返回 + 标题 */}
       <Stack direction="row" spacing={1.5} alignItems="center">
         <IconButton component="button" onClick={() => navigate('/security')} aria-label={t('enroll.backAria')}>
@@ -125,6 +103,15 @@ export default function EnrollPage() {
           </Typography>
         )}
       </Stack>
+
+      {/* 首批恢复码（仅显示一次）：重绑不重复签发；明文仅存本次挂载内存，重进/重登不再出现 */}
+      {freshCodes && (
+        <RecoveryCodesPanel
+          title={t('enroll.recoveryTitle')}
+          codes={freshCodes}
+          onSaved={() => setFreshCodes(null)}
+        />
+      )}
 
       {/* 凭据列表卡 */}
       <Card variant="outlined" sx={{ px: { xs: 2.5, sm: 4 }, py: 3 }}>
@@ -185,6 +172,6 @@ export default function EnrollPage() {
           </Typography>
         )}
       </Card>
-    </AccountShell>
+    </>
   );
 }

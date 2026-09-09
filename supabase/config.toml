@@ -123,11 +123,12 @@ enable_signup = true
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
+# FR-3 服务端强制：≥8 位且含字母数字（与注册页 zxcvbn 门槛对齐，直调 API 也绕不过）
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+minimum_password_length = 8
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
-password_requirements = ""
+password_requirements = "letters_digits"
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
@@ -146,10 +147,12 @@ token_verifications = 30
 web3 = 30
 
 # Configure one of the supported captcha providers: `hcaptcha`, `turnstile`.
-# [auth.captcha]
-# enabled = true
-# provider = "hcaptcha"
-# secret = ""
+# 与主站验证结构同构：登录/注册/邮箱找回的 captcha_token 由 GoTrue 服务端调 siteverify 校验。
+# secret 走 env（supabase/.env 的 TURNSTILE_SECRET）；本地用 CF 测试 secret（总是通过）。
+[auth.captcha]
+enabled = true
+provider = "turnstile"
+secret = "env(TURNSTILE_SECRET)"
 
 [auth.email]
 # Allow/disallow new user signups via email to your project.
@@ -317,6 +320,20 @@ verify_jwt = false
 # 生效——组级关闭运行时预检，由各处理器自行强制（register-* 内经 getUser() 验
 # JWT，缺失/无效一律 401，行为与组级开启等价）
 [functions.webauthn]
+verify_jwt = false
+
+# recovery/* 端点组：use 系无认证（邮箱+码+限流），regenerate/status 需会话——
+# 同 webauthn 组模式，组级关闭，由各处理器自行强制
+[functions.recovery]
+verify_jwt = false
+
+# mfa/* 方法状态查询组：契约均标注"认证: 无"，处理器内限速防枚举
+[functions.mfa]
+verify_jwt = false
+
+# account/* 安全中心三功能组（改密重认证/换绑/第二邮箱）：全部需会话——组级关闭，
+# 各处理器经 requireSession 强制 JWT（同 webauthn/recovery 组模式）
+[functions.account]
 verify_jwt = false
 
 [analytics]

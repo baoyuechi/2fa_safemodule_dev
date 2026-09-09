@@ -22,7 +22,7 @@
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { json } from '../_shared/http.ts';
-import { normalizePhone, phoneHash, phoneLast4 } from '../_shared/phone.ts';
+import { normalizePhone, phoneHash, phoneLast4, phonePrefix } from '../_shared/phone.ts';
 
 export async function handleBind(req: Request): Promise<Response> {
   // ── 1. JWT 会话用户识别（强制；缺失/无效 → 401）──
@@ -106,11 +106,12 @@ export async function handleBind(req: Request): Promise<Response> {
       return json(req, { ok: false, code: 'PHONE_TAKEN' }, 409);
     }
 
-    // ── 6. 写绑定（仅存 hash + 尾四位，FR-2.3 脱敏；RLS 全拒，仅 service_role 可写）──
+    // ── 6. 写绑定（仅存 hash + 尾四位 + 首三位，脱敏展示用；RLS 全拒，仅 service_role 可写）──
     const { error: insErr } = await admin.from('phone_bindings').insert({
       user_id: user.id,
       phone_hash: `\\x${hash}`,
       phone_last4: phoneLast4(phone),
+      phone_prefix: phonePrefix(phone),
       verified_via: 'sms',
     });
     if (insErr) throw insErr;

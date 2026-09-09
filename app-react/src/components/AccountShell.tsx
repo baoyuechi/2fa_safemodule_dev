@@ -10,20 +10,21 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import KeyRoundedIcon from '@mui/icons-material/KeyRounded';
-import LockRoundedIcon from '@mui/icons-material/LockRounded';
-import SmsRoundedIcon from '@mui/icons-material/SmsRounded';
-import FingerprintRoundedIcon from '@mui/icons-material/FingerprintRounded';
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import PersonRoundedIcon from '@mui/icons-material/PersonRounded';
+import ShieldRoundedIcon from '@mui/icons-material/ShieldRounded';
 import Tooltip from '@mui/material/Tooltip';
 import { Link as RouterLink } from 'react-router-dom';
 import BrandLogo from './BrandLogo';
 import ColorModeIconDropdown from '../shared-theme/ColorModeIconDropdown';
 import LocaleMenuButton from './LocaleMenuButton';
+import { enterFadeUp } from '../shared-theme/motion';
 import { useI18n } from '../i18n/LocaleContext';
 import type { MfaUser } from '../api/mfaClient';
 
 interface AccountShellProps {
-  active: 'security' | 'passkeys' | 'phone';
+  /** 用户中心三 Tab；安全子功能深链（passkeys/phone/recovery）高亮归到 security */
+  active: 'profile' | 'settings' | 'security' | 'passkeys' | 'phone' | 'recovery';
   user: MfaUser;
   onLogout: () => void;
   children: React.ReactNode;
@@ -56,21 +57,34 @@ const NAV_BG_DARK: Record<string, string> = {
 
 /**
  * 账户页共用壳（图 1 风格）：顶栏品牌 + 头像菜单；左侧彩色圆标导航；
- * 右侧主内容列。预留项（只有恢复码，端点 9/10/12 未实现）禁用并标注「预留」。
+ * 右侧主内容列。
  */
 export default function AccountShell({ active, user, onLogout, children }: AccountShellProps) {
   const theme = useTheme();
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
   const [anchorEl, setAnchorEl] = React.useState<HTMLElement | null>(null);
+  const [scrolled, setScrolled] = React.useState(false);
   const initial = (user.email ?? '？').slice(0, 1).toUpperCase();
 
-  // 导航项：文案按当前语言取词
+  // 滚动检测：主体内容滚过顶栏高度后，顶栏背景变为毛玻璃透明（P4 修复）
+  React.useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 10);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  // 导航项：用户中心三 Tab（文案按当前语言取词；中英直写，其余语言回落英文）
+  // 安全子功能（/enroll /phone /recovery）仍经 SecurityPage 内卡片进入，
+  // 深链时左栏高亮归到 security（见 isActive 的归一）。
+  const zh = locale === 'zh';
   const NAV_ITEMS: NavItem[] = [
-    { key: 'security', label: t('nav.security'), icon: <LockRoundedIcon sx={{ fontSize: 18 }} />, variant: 'primary', to: '/security' },
-    { key: 'passkeys', label: t('nav.passkeys'), icon: <FingerprintRoundedIcon sx={{ fontSize: 18 }} />, variant: 'success', to: '/enroll' },
-    { key: 'phone', label: t('nav.phone'), icon: <SmsRoundedIcon sx={{ fontSize: 18 }} />, variant: 'warning', to: '/phone' },
-    { key: 'recovery', label: t('nav.recovery'), icon: <KeyRoundedIcon sx={{ fontSize: 18 }} />, variant: 'info', disabled: true },
+    { key: 'profile', label: zh ? '个人主页' : locale === 'es' ? 'Inicio' : locale === 'ja' ? 'ホーム' : 'Profile', icon: <HomeRoundedIcon sx={{ fontSize: 18 }} />, variant: 'primary', to: '/profile' },
+    { key: 'settings', label: zh ? '个人资料' : locale === 'es' ? 'Perfil' : locale === 'ja' ? 'プロフィール' : 'Settings', icon: <PersonRoundedIcon sx={{ fontSize: 18 }} />, variant: 'success', to: '/settings' },
+    { key: 'security', label: t('nav.security'), icon: <ShieldRoundedIcon sx={{ fontSize: 18 }} />, variant: 'warning', to: '/security' },
   ];
+  /** 安全子功能深链归一：passkeys/phone/recovery → security 高亮 */
+  const activeKey = active === 'passkeys' || active === 'phone' || active === 'recovery' ? 'security' : active;
   const footerLinks = ['common.privacy', 'common.terms'] as const;
 
   /** 圆标底色：按当前明暗模式取对应色值 */
@@ -84,7 +98,8 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
 
   return (
     <Box sx={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
-      {/* 顶栏 */}
+      {/* 顶栏（完全固定：fixed 定位，不随任何滚动移动）
+          滚动后背景变半透明毛玻璃，避免遮挡主体内容（P4 修复） */}
       <Box
         sx={{
           display: 'flex',
@@ -92,6 +107,21 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
           justifyContent: 'space-between',
           px: { xs: 2, sm: 3 },
           py: 1.5,
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 60,
+          zIndex: 1100,
+          bgcolor: scrolled ? 'rgba(255,255,255,0.72)' : 'background.default',
+          backdropFilter: scrolled ? 'saturate(180%) blur(20px)' : 'none',
+          WebkitBackdropFilter: scrolled ? 'saturate(180%) blur(20px)' : 'none',
+          borderBottom: scrolled ? '1px solid' : '1px solid transparent',
+          borderColor: scrolled ? 'divider' : 'transparent',
+          transition: 'background-color .25s ease, border-color .25s ease, backdrop-filter .25s ease',
+          ...theme.applyStyles('dark', {
+            bgcolor: scrolled ? 'rgba(27,27,29,0.72)' : 'background.default',
+          }),
         }}
       >
         <Stack direction="row" spacing={1} alignItems="center">
@@ -132,18 +162,34 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
         </MenuItem>
       </Menu>
 
-      <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-start' }}>
-        {/* 左侧导航（窄屏隐藏） */}
+      <Box sx={{ flex: 1, display: 'flex', alignItems: 'flex-start', pt: '60px' }}>
+        {/* 左侧导航（完全固定：fixed 定位；窄屏隐藏） */}
         <Stack
           component="nav"
-          spacing={0.5}
-          sx={{ display: { xs: 'none', md: 'flex' }, width: 240, px: 2, pt: 3, position: 'sticky', top: 24, flexShrink: 0 }}
+          spacing={1}
+          sx={{
+            display: { xs: 'none', md: 'flex' },
+            width: 240,
+            px: 2,
+            pt: 3,
+            pb: 3,
+            position: 'fixed',
+            top: 60,
+            left: 0,
+            bottom: 0,
+            overflowY: 'auto',
+            flexShrink: 0,
+          }}
         >
           {NAV_ITEMS.map((item) => {
-            const isActive = item.key === active;
+            const isActive = item.key === activeKey;
             const rowSx = {
               borderRadius: 999,
-              py: 1,
+              py: 1.25,
+              px: 1.5,
+              // ListItemButton 自带 flex-grow: 1；侧栏 fixed 定高后会平分剩余空间把行撑高，
+              // 这里锁死为内容高度。
+              flexGrow: 0,
               bgcolor: isActive ? activeBg : 'transparent',
               '&:hover': {
                 bgcolor: isActive ? activeHoverBg : 'action.hover',
@@ -212,9 +258,21 @@ export default function AccountShell({ active, user, onLogout, children }: Accou
           </Box>
         </Stack>
 
-        {/* 主内容列 */}
-        <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center', px: { xs: 2, sm: 4 }, py: { xs: 1, sm: 3 } }}>
-          <Stack spacing={3} sx={{ width: '100%', maxWidth: 820 }}>{children}</Stack>
+        {/* 主内容列（唯一滚动区：页面原生滚动；左侧 fixed 需让出 240px）。
+            入场 fade-up 与 AuthShell 卡片一致：从改密/换绑/辅助邮箱等单一功能页
+            返回时保持同一套丝滑过渡。 */}
+        <Box
+          sx={{
+            flex: 1,
+            ml: { md: '240px' },
+            display: 'flex',
+            justifyContent: 'center',
+            px: { xs: 2, sm: 4 },
+            py: { xs: 1, sm: 3 },
+            ...enterFadeUp,
+          }}
+        >
+          <Stack spacing={4} sx={{ width: '100%', maxWidth: 820 }}>{children}</Stack>
         </Box>
       </Box>
     </Box>

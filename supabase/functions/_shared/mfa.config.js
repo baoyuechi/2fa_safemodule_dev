@@ -9,7 +9,7 @@
 // 绝不静默降级成不安全配置。
 // ============================================================================
 
-/** @type {{ allowedEmailDomains: string[], corsAllowOrigins: string[], allowNoOrigin: boolean, rpID: string, origin: string, timeoutMs: number, recoveryCodes: number, webauthn: { authenticatorAttachment: string, residentKey: string, attestation: string }, rateLimits: { sendOtpPerPhonePerDay: number, verifyOtpAttemptsPer5Min: number }, enabled: boolean }} */
+/** @type {{ allowedEmailDomains: string[], corsAllowOrigins: string[], allowNoOrigin: boolean, rpID: string, origin: string, timeoutMs: number, recoveryCodes: number, webauthn: { authenticatorAttachment: string, residentKey: string, attestation: string, allowedAlgorithms: number[] },   rateLimits: { sendOtpPerPhonePerDay: number, verifyOtpAttemptsPer5Min: number, recoveryUseAttemptsPerHour: number, loginVerifyAttemptsPer15Min: number, methodsPerEmailPerHour: number, boundPhoneSendPerDay: number, rebindNewSendPerDay: number, emailOtpSendPerDay: number, secondaryEmailSendPerDay: number, accountOtpVerifyAttemptsPer5Min: number, recoveryReauthAttemptsPer15Min: number }, enabled: boolean }} */
 
 // WebAuthn RP 常量：生产定值（Part 5 §五）；本地开发经 .env 覆盖为 localhost
 // （tech 清单 §4.2.4：RP_ID/ORIGIN 走环境变量 + fail-loud 校验）
@@ -44,6 +44,9 @@ const mfaConfig = {
     authenticatorAttachment: 'platform', // 指向本机 Touch ID
     residentKey: 'preferred',            // Android 必产出同步通行证
     attestation: 'none',                 // 不做设备型号背书
+    // G8 算法白名单：ES256(-7)/RS256(-257)；排除 EdDSA(-8，simplewebauthn
+    // 官方 troubleshooting 指出的兼容坑）与 -9/-51/-52/-19（设计排除项）
+    allowedAlgorithms: [-7, -257],
   },
 
   // L3 §15.1 挑战 TTL 与前端 timeout 一致（G7）
@@ -57,6 +60,25 @@ const mfaConfig = {
     sendOtpPerPhonePerDay: 5,
     // 防穷举：6 位码 + 5min TTL，验证尝试 10 次/5min/手机号
     verifyOtpAttemptsPer5Min: 10,
+    // 防穷举：恢复码 40bit 熵，同一邮箱消费尝试 5 次/1h
+    recoveryUseAttemptsPerHour: 5,
+    // D1：登录验签同一凭据 10 次/15min（按凭据限，不按 IP——防校园网 NAT 误伤）
+    loginVerifyAttemptsPer15Min: 10,
+    // 防定向骚扰：方法状态查询（mfa/methods）同一邮箱 1h ≤ 60 次
+    // （登录页 choose 步每次进入都可能查询；上限取宽松值避免误伤，仅反滥用）
+    methodsPerEmailPerHour: 60,
+    // 安全中心三功能（M-ACCT）：给自己已绑手机发验证码（重认证/换绑旧机共用）24h ≤5
+    boundPhoneSendPerDay: 5,
+    // 换绑新手机号发送验证码 24h ≤5
+    rebindNewSendPerDay: 5,
+    // 重认证邮箱验证码（发到主邮箱）24h ≤5
+    emailOtpSendPerDay: 5,
+    // 第二辅助邮箱验证码 24h ≤5
+    secondaryEmailSendPerDay: 5,
+    // 邮箱 6 位码验证尝试 10 次/5min/邮箱（防穷举，同手机验证码纪律）
+    accountOtpVerifyAttemptsPer5Min: 10,
+    // 重认证之恢复码检验 5 次/15min/用户（防穷举；任何正确输入即消费该码）
+    recoveryReauthAttemptsPer15Min: 5,
   },
 
   // NFR-3 总开关：false 时端点一律 503，用于"全站原行为"回退演练（交付标准 7）
@@ -89,6 +111,27 @@ assert(Number.isInteger(mfaConfig.rateLimits.sendOtpPerPhonePerDay) && mfaConfig
   'rateLimits.sendOtpPerPhonePerDay 必须是正整数');
 assert(Number.isInteger(mfaConfig.rateLimits.verifyOtpAttemptsPer5Min) && mfaConfig.rateLimits.verifyOtpAttemptsPer5Min > 0,
   'rateLimits.verifyOtpAttemptsPer5Min 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.recoveryUseAttemptsPerHour) && mfaConfig.rateLimits.recoveryUseAttemptsPerHour > 0,
+  'rateLimits.recoveryUseAttemptsPerHour 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.loginVerifyAttemptsPer15Min) && mfaConfig.rateLimits.loginVerifyAttemptsPer15Min > 0,
+  'rateLimits.loginVerifyAttemptsPer15Min 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.methodsPerEmailPerHour) && mfaConfig.rateLimits.methodsPerEmailPerHour > 0,
+  'rateLimits.methodsPerEmailPerHour 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.boundPhoneSendPerDay) && mfaConfig.rateLimits.boundPhoneSendPerDay > 0,
+  'rateLimits.boundPhoneSendPerDay 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.rebindNewSendPerDay) && mfaConfig.rateLimits.rebindNewSendPerDay > 0,
+  'rateLimits.rebindNewSendPerDay 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.emailOtpSendPerDay) && mfaConfig.rateLimits.emailOtpSendPerDay > 0,
+  'rateLimits.emailOtpSendPerDay 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.secondaryEmailSendPerDay) && mfaConfig.rateLimits.secondaryEmailSendPerDay > 0,
+  'rateLimits.secondaryEmailSendPerDay 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.accountOtpVerifyAttemptsPer5Min) && mfaConfig.rateLimits.accountOtpVerifyAttemptsPer5Min > 0,
+  'rateLimits.accountOtpVerifyAttemptsPer5Min 必须是正整数');
+assert(Number.isInteger(mfaConfig.rateLimits.recoveryReauthAttemptsPer15Min) && mfaConfig.rateLimits.recoveryReauthAttemptsPer15Min > 0,
+  'rateLimits.recoveryReauthAttemptsPer15Min 必须是正整数');
+assert(Array.isArray(mfaConfig.webauthn.allowedAlgorithms) && mfaConfig.webauthn.allowedAlgorithms.length > 0 &&
+  mfaConfig.webauthn.allowedAlgorithms.every(Number.isInteger),
+  'webauthn.allowedAlgorithms 必须是非空整数数组');
 
 export const config = Object.freeze({ ...mfaConfig });
 export default mfaConfig;

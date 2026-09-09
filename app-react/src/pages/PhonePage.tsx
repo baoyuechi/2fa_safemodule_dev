@@ -1,61 +1,44 @@
 import * as React from 'react';
+import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
+import Chip from '@mui/material/Chip';
+import CircularProgress from '@mui/material/CircularProgress';
+import ListItemButton from '@mui/material/ListItemButton';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import SmsRoundedIcon from '@mui/icons-material/SmsRounded';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import { useNavigate } from 'react-router-dom';
-import AccountShell from '../components/AccountShell';
-import PageLoader from '../components/PageLoader';
+import CableRoundedIcon from '@mui/icons-material/CableRounded';
+import ChevronRightRoundedIcon from '@mui/icons-material/ChevronRightRounded';
+import { Link as RouterLink } from 'react-router-dom';
 import { useI18n } from '../i18n/LocaleContext';
-import {
-  clearSession,
-  fetchSessionUser,
-  getSession,
-  signOut,
-  toast,
-} from '../api/mfaClient';
-import type { MfaUser } from '../api/mfaClient';
+import { getAccountSecurityStatus, getSession, handleError } from '../api/mfaClient';
 
-/** 手机号绑定信息页：说明注册时已一次性绑定（FR-2），不参与日常登录。 */
+/** 手机号绑定信息页：说明注册时已一次性绑定（FR-2）；尾部提供「更换手机号」入口。 */
 export default function PhonePage() {
-  const navigate = useNavigate();
   const { t } = useI18n();
-  const [user, setUser] = React.useState<MfaUser | null>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [phoneLast4, setPhoneLast4] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    void (async () => {
-      const session = getSession();
-      if (!session?.access_token) {
-        navigate('/login', { replace: true });
-        return;
-      }
-      try {
-        setUser(await fetchSessionUser(session.access_token));
-      } catch {
-        clearSession();
-        navigate('/login', { replace: true });
-      }
-    })();
-  }, [navigate]);
-
-  async function doLogout() {
     const session = getSession();
-    try {
-      if (session?.access_token) await signOut(session.access_token);
-    } catch {
-      /* 登出失败也照常清本地 */
-    } finally {
-      clearSession();
-      toast(t('common.signedOut'), 'info');
-      navigate('/login', { replace: true });
-    }
+    if (!session?.access_token) return;
+    void getAccountSecurityStatus(session.access_token)
+      .then((status) => setPhoneLast4(status.phoneLast4))
+      .catch((e) => handleError(e))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: 'grid', placeItems: 'center', py: 8 }}>
+        <CircularProgress size={28} />
+      </Box>
+    );
   }
 
-  if (!user) return <PageLoader />; // 守卫跳转中：统一加载占位，避免白屏闪现
-
   return (
-    <AccountShell active="phone" user={user} onLogout={doLogout}>
+    <>
       <Typography variant="h1">{t('phone.title')}</Typography>
 
       <Card variant="outlined" sx={{ px: { xs: 2.5, sm: 4 }, py: 3 }}>
@@ -75,6 +58,20 @@ export default function PhonePage() {
           </Stack>
         </Stack>
       </Card>
-    </AccountShell>
+
+      <Card variant="outlined">
+        <ListItemButton component={RouterLink} to="/security/phone/rebind" sx={{ py: 2, px: { xs: 2.5, sm: 4 }, borderRadius: 0 }}>
+          <CableRoundedIcon sx={{ mr: 2.5, color: 'text.secondary' }} />
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography>{t('phoneRebind.title')}</Typography>
+            <Typography variant="body2" sx={{ color: 'text.secondary' }}>
+              {phoneLast4 ? `${t('phoneRebind.oldNote')} · · · · · ·${phoneLast4}` : t('phoneRebind.newNote')}
+            </Typography>
+          </Box>
+          <Chip label={t('security.passwordManage')} size="small" variant="outlined" sx={{ mr: 1 }} />
+          <ChevronRightRoundedIcon sx={{ color: 'text.secondary' }} />
+        </ListItemButton>
+      </Card>
+    </>
   );
 }

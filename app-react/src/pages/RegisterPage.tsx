@@ -11,6 +11,8 @@ import EmailPill from '../components/EmailPill';
 import InputError from '../components/InputError';
 import type { InputErrorInfo } from '../components/InputError';
 import PasswordStrengthMeter from '../components/PasswordStrengthMeter';
+import Turnstile from '../components/Turnstile';
+import type { TurnstileHandle } from '../components/Turnstile';
 import { scorePasswordSync } from '../lib/passwordStrength';
 import { useI18n } from '../i18n/LocaleContext';
 import {
@@ -50,6 +52,9 @@ export default function RegisterPage() {
   const [emailError, setEmailError] = React.useState<InputErrorInfo | null>(null);
   const [passwordError, setPasswordError] = React.useState<InputErrorInfo | null>(null);
   const [confirmError, setConfirmError] = React.useState<InputErrorInfo | null>(null);
+  // Turnstile 人机验证：token 一次性，提交消费后重置（GoTrue [auth.captcha] 服务端校验）
+  const [captchaToken, setCaptchaToken] = React.useState('');
+  const turnstileRef = React.useRef<TurnstileHandle>(null);
 
   // 邮箱「输入即校验」：停止输入 600ms 视为完成输入，自动校验合法性/完整性。
   // 字段为空时不催促（留到失焦/提交再报），已有错误且输入变得合法则由 onChange 即时清除。
@@ -97,10 +102,11 @@ export default function RegisterPage() {
     const score = scorePasswordSync(password, locale);
     if (score !== null && score < 2) return setPasswordError({ key: 'register.tooWeak' });
     if (password !== password2) return setConfirmError({ key: 'register.passwordMismatch' });
+    if (!captchaToken) return setPasswordError({ key: 'error.captchaRequired' });
     setBusy(true);
     try {
       await checkEmailDomain({ email: mail });
-      await signUp(mail, password);
+      await signUp(mail, password, captchaToken);
       // 邮箱持久化：state 刷新即丢，写入 sessionStorage 供 CheckEmail 刷新后回退
       sessionStorage.setItem('mfa.pendingEmail', mail);
       toast(t('register.success'), 'success');
@@ -113,6 +119,9 @@ export default function RegisterPage() {
       } else {
         handleError(e);
         setBusy(false);
+        // token 已被 GoTrue 消费：注册失败重试前需重新人机验证
+        setCaptchaToken('');
+        turnstileRef.current?.reset();
       }
     }
   }
@@ -209,6 +218,8 @@ export default function RegisterPage() {
           />
           <InputError error={confirmError} />
         </Box>
+        {/* 人机验证（与主站注册页同位：提交按钮上方） */}
+        <Turnstile ref={turnstileRef} onToken={setCaptchaToken} onExpire={() => setCaptchaToken('')} />
       </Stack>
     </AuthShell>
   );

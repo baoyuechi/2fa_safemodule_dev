@@ -1,16 +1,22 @@
 // ============================================================================
 // L0 端点 2/12 · phone/send-otp（处理器，由 phone/index.ts 路由分发）
 //
-// 契约（design/05-数据库与API契约.md §三）：POST · 无认证+Turnstile · {phone} → {ok}
-//   同一手机号 24h ≤5 条（rate_limits 共享计数表）；号已绑定→PHONE_TAKEN（FR-2.2）。
+// 契约（design/05-数据库与API契约.md §三）：POST · 无认证+Turnstile
+//   {phone, captcha_token, purpose?} → {ok}，purpose 缺省 'bind'：
+//     bind     注册绑定场景：号已绑定→PHONE_TAKEN（FR-2.2，一号一户）
+//     recovery 找回密码场景：号未绑定→PHONE_NOT_BOUND（必须已绑定才能接收找回码）
+//   同一手机号 24h ≤5 条（rate_limits 共享计数表，两种 purpose 共用额度）。
+//   captcha_token 经 siteverify 校验（_shared/turnstile.ts；secret 走 env）。
 //
 // 当前阶段模拟发送（M0 短信凭据未就绪）：生成 6 位随机码，打印到服务端日志，
 // 哈希后暂存 otp_tokens（TTL 300s）。真实短信通道接入时仅替换"发送"一节。
 //
 // 响应：
-//   200 {ok:true}                       已发送（模拟）
-//   200 {ok:false, code:'PHONE_TAKEN'}  手机号已被其他账号绑定（FR-2.2）
-//   429 {ok:false, code:'RATE_LIMITED'} 24h 内超过 5 条
+//   200 {ok:true}                        已发送（模拟）
+//   200 {ok:false, code:'CAPTCHA_FAILED'}    人机验证失败/缺失
+//   200 {ok:false, code:'PHONE_TAKEN'}       bind：手机号已被绑定（FR-2.2）
+//   200 {ok:false, code:'PHONE_NOT_BOUND'}   recovery：手机号未绑定任何账号
+//   429 {ok:false, code:'RATE_LIMITED'}  24h 内超过 5 条
 //   400/403/405/503 {ok:false, code:'FALLBACK'}  统一守卫与参数校验
 // ============================================================================
 
@@ -18,19 +24,25 @@ import { createClient } from 'npm:@supabase/supabase-js@2';
 import { config } from '../_shared/mfa.config.js';
 import { json } from '../_shared/http.ts';
 import { normalizePhone, otpSecretHash, phoneHash } from '../_shared/phone.ts';
+import { verifyTurnstileToken } from '../_shared/turnstile.ts';
 
 export async function handleSendOtp(req: Request): Promise<Response> {
-  // TODO(M2): Turnstile 人机校验（契约"无认证+Turnstile"）——待站主提供 CF site key/secret 后接入。
-
   let body: unknown;
   try {
     body = await req.json();
   } catch {
     return json(req, { ok: false, code: 'FALLBACK' }, 400);
   }
-  const phone = normalizePhone((body as { phone?: unknown })?.phone);
+  const b = body as { phone?: unknown; captcha_token?: unknown; purpose?: unknown };
+  const phone = normalizePhone(b?.phone);
+  const purpose = b?.purpose === 'recovery' ? 'recovery' : 'bind';
   if (!phone) {
     return json(req, { ok: false, code: 'FALLBACK' }, 400);
+  }
+
+  // Turnstile 人机校验（契约"无认证+Turnstile"；token 一次性，前端每次发送前重新挑战）
+  if (!(await verifyTurnstileToken(req, b?.captcha_token))) {
+    return json(req, { ok: false, code: 'CAPTCHA_FAILED' });
   }
 
   const admin = createClient(
@@ -52,15 +64,18 @@ export async function handleSendOtp(req: Request): Promise<Response> {
       return json(req, { ok: false, code: 'RATE_LIMITED' }, 429);
     }
 
-    // FR-2.2 一号一户：手机号已绑定其他账号 → PHONE_TAKEN
+    // FR-2.2 一号一户（bind）：已绑定→PHONE_TAKEN；recovery 相反：未绑定→PHONE_NOT_BOUND
     const { data: bound, error: bErr } = await admin
       .from('phone_bindings')
       .select('user_id')
       .eq('phone_hash', `\\x${hash}`)
       .maybeSingle();
     if (bErr) throw bErr;
-    if (bound) {
+    if (purpose === 'bind' && bound) {
       return json(req, { ok: false, code: 'PHONE_TAKEN' });
+    }
+    if (purpose === 'recovery' && !bound) {
+      return json(req, { ok: false, code: 'PHONE_NOT_BOUND' });
     }
 
     // 生成 6 位随机码 → 哈希暂存 otp_tokens（TTL 300s，单次有效）

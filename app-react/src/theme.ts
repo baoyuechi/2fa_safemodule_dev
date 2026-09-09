@@ -89,10 +89,10 @@ const theme = createTheme({
           borderRadius: RADIUS_CARD,
           backgroundImage: 'none',
           overflow: 'hidden',
-          // 四周环绕阴影：贴地锐影 + 大范围慢衰减；暗色用纯黑加强（深灰页面上可感知）
-          boxShadow: '0 1px 3px rgba(60,64,67,.16), 0 10px 36px rgba(60,64,67,.18)',
+          // 四周环绕阴影（偏浅）：贴地锐影 + 大范围慢衰减；暗色用纯黑加强（深灰页面上可感知）
+          boxShadow: '0 1px 3px rgba(60,64,67,.10), 0 10px 36px rgba(60,64,67,.11)',
           ...theme.applyStyles('dark', {
-            boxShadow: '0 2px 10px rgba(0,0,0,.55), 0 14px 48px rgba(0,0,0,.6)',
+            boxShadow: '0 2px 10px rgba(0,0,0,.35), 0 14px 48px rgba(0,0,0,.38)',
           }),
         }),
       },

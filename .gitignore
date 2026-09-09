@@ -6,3 +6,10 @@
 .env.*
 node_modules/
 supabase/.temp/
+
+# 本地工具/编辑器产物，不入库
+.mimosa/
+.v2c/
+.zcode/
+.vscode/
+*.bak

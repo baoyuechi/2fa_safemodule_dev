@@ -42,3 +42,85 @@ export function hexToBytes(hex: string): Uint8Array {
   }
   return out;
 }
+
+/**
+ * 读取 COSE_Key（CBOR map）的 alg（label 3，用于 G8 白名单断言）。
+ * 最小 CBOR 子集遍历（整数/字节串/文本/数组/map/tag/simple）；任何结构异常、
+ * 截断、非整数 alg 一律返回 null —— 调用方 fail-closed 拒绝。
+ */
+export function readCoseAlg(keyBytes: Uint8Array): number | null {
+  try {
+    let pos = 0;
+    const need = (n: number) => {
+      if (pos + n > keyBytes.length) throw new Error('cose oob');
+    };
+    const readLen = (ai: number): number | null => {
+      if (ai < 24) return ai;
+      if (ai === 24) { need(1); return keyBytes[pos++]; }
+      if (ai === 25) { need(2); const v = (keyBytes[pos] << 8) | keyBytes[pos + 1]; pos += 2; return v; }
+      if (ai === 26) {
+        need(4);
+        const v = keyBytes[pos] * 2 ** 24 + (keyBytes[pos + 1] << 16) + (keyBytes[pos + 2] << 8) + keyBytes[pos + 3];
+        pos += 4;
+        return v;
+      }
+      return null; // 64 位长度 / 不定长：不支持 → fail-closed
+    };
+    const readInt = (): number | null => {
+      need(1);
+      const ib = keyBytes[pos++];
+      const mt = ib >> 5;
+      const u = readLen(ib & 31);
+      if (u === null) return null;
+      if (mt === 0) return u;
+      if (mt === 1) return -1 - u;
+      return null; // 非整数标量
+    };
+    const skip = (): boolean => {
+      need(1);
+      const ib = keyBytes[pos++];
+      const mt = ib >> 5;
+      const ai = ib & 31;
+      if (mt === 7) { // simple / float
+        if (ai < 24) return true;
+        const n = ai === 24 ? 1 : ai === 25 ? 2 : ai === 26 ? 4 : 8;
+        need(n);
+        pos += n;
+        return true;
+      }
+      if (mt === 6) { // tag：跳过 tag 号再跳内容
+        if (readLen(ai) === null) return false;
+        return skip();
+      }
+      if (mt <= 1) { // uint / nint：标量值在头字节（长参数已由 readLen 消费），无内容可跳
+        return readLen(ai) !== null;
+      }
+      if (mt <= 3) { // bytes / text：跳过 len 字节内容
+        const len = readLen(ai);
+        if (len === null) return false;
+        need(len);
+        pos += len;
+        return true;
+      }
+      const len = readLen(ai); // array(4) / map(5)：递归跳元素
+      if (len === null) return false;
+      const items = mt === 4 ? len : len * 2;
+      for (let i = 0; i < items; i++) if (!skip()) return false;
+      return true;
+    };
+    need(1);
+    const first = keyBytes[pos++];
+    if (first >> 5 !== 5) return null; // 顶层必须是 map
+    const n = readLen(first & 31);
+    if (n === null) return null;
+    for (let i = 0; i < n; i++) {
+      const k = readInt();
+      if (k === null) return null;
+      if (k === 3) return readInt(); // alg（可正可负）
+      if (!skip()) return null;
+    }
+    return null; // 无 alg 项
+  } catch {
+    return null;
+  }
+}

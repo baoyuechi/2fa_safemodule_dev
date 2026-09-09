@@ -86,6 +86,8 @@ export async function handleRegisterOptions(req: Request): Promise<Response> {
       userDisplayName: userName, // 与 userName 同值，规避 Chrome displayName 空 bug（tech 清单 §1.6）
       attestationType: config.webauthn.attestation,
       excludeCredentials,
+      // G8：只向认证器提供白名单算法（ES256/RS256）
+      supportedAlgorithmIDs: config.webauthn.allowedAlgorithms,
       authenticatorSelection: {
         residentKey: config.webauthn.residentKey,
         userVerification: 'required', // 指纹底线
