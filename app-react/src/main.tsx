@@ -20,6 +20,7 @@ import SecurityPage from './pages/SecurityPage';
 import RecoveryPage from './pages/RecoveryPage';
 import TermsPage from './pages/TermsPage';
 import AccountLayout from './components/AccountLayout';
+import OAuthAuthorizePage from './pages/OAuthAuthorizePage';
 import UserCenterPage from './pages/user/UserCenterPage';
 import ProfileHomeTab from './pages/user/ProfileHomeTab';
 import ProfileEditTab from './pages/user/ProfileEditTab';
@@ -51,6 +52,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/register/verified" element={<VerificationSuccessPage />} />
             <Route path="/auth/confirm" element={<ConfirmEmailPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            {/* OAuth Provider 授权页：业务站 302 落点（?tx=…&state=…），复用现有登录 */}
+            <Route path="/oauth/authorize" element={<OAuthAuthorizePage />} />
             {/* 用户中心（Tabs 布局常驻：切换 Tab 只换 Outlet，不重挂壳） */}
             <Route element={<AccountLayout />}>
               <Route element={<UserCenterPage />}>

@@ -190,15 +190,32 @@ export async function handleLoginVerify(req: Request): Promise<Response> {
     }
 
     // ── 8. 更新凭据记录：counter 防克隆 + BS 漂移（G3，变化由安全中心提示）+ last_used_at ──
-    const { error: updErr } = await admin
+    // 并发安全（乐观并发 CAS）：WHERE 必须带上本次验签时读取的旧 counter。
+    // challenge 原子认领只能防"同一挑战重放"，防不住"两个不同挑战并发验签后
+    // 盲写覆盖"（后写覆盖先写，克隆体回退计数可被掩盖）。0 行受影响 = 并发
+    // 冲突/重放 → 拒绝 + 高风险事件，绝不静默覆盖。
+    const { data: updated, error: updErr } = await admin
       .from('webauthn_credentials')
       .update({
         counter: authInfo.newCounter,
         backup_state: authInfo.credentialBackedUp ?? cred.backup_state,
         last_used_at: new Date().toISOString(),
       })
-      .eq('id', cred.id);
+      .eq('id', cred.id)
+      .eq('counter', cred.counter)
+      .select('id');
     if (updErr) throw updErr;
+    if (!updated || updated.length === 0) {
+      console.warn('[webauthn/login-verify] counter CAS conflict:', cred.id);
+      await admin.from('risk_events').insert({
+        user_id: cred.user_id,
+        signals: ['webauthn_counter_conflict'],
+        level: 'high',
+        channel: 'webauthn',
+        action_taken: 'deny',
+      }).then(() => {}, () => {});
+      return json(req, { ok: false, code: 'INVALID_SIGNATURE' });
+    }
 
     // ── 9. 风控留痕（FR-9.4）。M2 阶段仅记 webauthn 登录通过；信号采集与
     //      risk/evaluate 矩阵属 M5，counter 回退等失败原始原因仅入服务端日志。──

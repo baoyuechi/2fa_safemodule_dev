@@ -41,7 +41,25 @@ import {
   toast,
   useRecoveryCode,
 } from '../api/mfaClient';
+import { readPendingOAuthTx } from '../api/oauthClient';
 import type { AuthenticationResponseJSON } from '../api/mfaClient';
+
+/** OAuth 模式：登录成功后回到 Provider 授权页继续（而非进安全中心）。
+ *  tx 来源：query ?oauth_tx=…（授权页跳转）或 sessionStorage（刷新/往返兜底）；
+ *  state 同源透传。返回 true 表示已接管跳转。 */
+function redirectIfOAuthPending(navigate: (to: string, opts?: object) => void): boolean {
+  const queryTx = new URLSearchParams(window.location.search).get('oauth_tx');
+  const pending = readPendingOAuthTx();
+  const tx = queryTx ?? pending?.tx ?? null;
+  if (!tx) return false;
+  // state 优先 query（授权页 302 带来），否则用存储值；两者都没有则不带。
+  const queryState = new URLSearchParams(window.location.search).get('oauth_state');
+  const state = queryState ?? (pending?.tx === tx ? pending.state : null);
+  const back = `/oauth/authorize?tx=${encodeURIComponent(tx)}` +
+    (state ? `&state=${encodeURIComponent(state)}` : '');
+  navigate(back, { replace: true });
+  return true;
+}
 
 // Conditional UI 挂起的仪式用组件级 ref 记账：新一帧挂载（含从别页返回）时重置为 false，
 // 从而每次进入登录页都会重新挂起常驻仪式；StrictMode 同一挂载的双调 useEffect 由
@@ -167,7 +185,7 @@ React.useEffect(() => {
     });
 }, [step, email]);
 
-  // 已有有效会话 → 直接进安全中心
+  // 已有有效会话 → OAuth 模式回授权页继续，否则直接进安全中心
   React.useEffect(() => {
     void (async () => {
       const session = getSession();
@@ -175,6 +193,7 @@ React.useEffect(() => {
         try {
           await fetchSessionUser(session.access_token);
           clearLoginDraft(); // 已有会话直奔安全中心，丢弃未走完的草稿
+          if (redirectIfOAuthPending(navigate)) return;
           navigate('/security', { replace: true });
           return;
         } catch {
@@ -194,12 +213,13 @@ React.useEffect(() => {
     }
   }, [step, email]);
 
-  /** 通行密钥登录共用终点：assertion → login-verify → token_hash → 会话 → 安全中心 */
+  /** 通行密钥登录共用终点：assertion → login-verify → token_hash → 会话 → 安全中心（OAuth 模式回授权页） */
   const finishPasskeyLogin = React.useCallback(
     async (assertion: AuthenticationResponseJSON, mail: string | null) => {
       const { token_hash } = await loginVerify({ ...(mail ? { email: mail } : {}), response: assertion });
       saveSession(await exchangeTokenHash(token_hash));
       clearLoginDraft();
+      if (redirectIfOAuthPending(navigate)) return;
       toast(t('login.success'), 'success');
       navigate('/security', { replace: true });
     },
@@ -297,6 +317,7 @@ React.useEffect(() => {
     try {
       saveSession(await signInWithPassword(email.trim().toLowerCase(), password, captchaToken));
       clearLoginDraft();
+      if (redirectIfOAuthPending(navigate)) return;
       toast(t('login.success'), 'success');
       navigate('/security', { replace: true });
     } catch (e) {
@@ -329,6 +350,7 @@ React.useEffect(() => {
       const { token_hash } = await useRecoveryCode(email.trim().toLowerCase(), code);
       saveSession(await exchangeTokenHash(token_hash));
       clearLoginDraft();
+      if (redirectIfOAuthPending(navigate)) return;
       toast(t('login.success'), 'success');
       navigate('/security', { replace: true });
     } catch (e) {

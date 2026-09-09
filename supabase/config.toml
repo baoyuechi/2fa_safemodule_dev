@@ -336,6 +336,13 @@ verify_jwt = false
 [functions.account]
 verify_jwt = false
 
+# oauth/* Provider 组（Authorization Server + OIDC Provider）：组级关闭网关 JWT
+# 预检，由各处理器自行强制 —— discovery/JWKS 公开；authorize/transaction 按
+# transaction 能力 + 会话推进；token 按 client 认证 + PKCE；userinfo/revoke 按
+# Bearer。OAuth 有独立 HTTP/CORS 层（_shared/http.ts），不复用 MFA guard()。
+[functions.oauth]
+verify_jwt = false
+
 [analytics]
 enabled = true
 port = 54327
