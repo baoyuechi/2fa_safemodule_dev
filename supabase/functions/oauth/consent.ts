@@ -70,6 +70,9 @@ export async function handleConsent(req: Request): Promise<Response> {
     if (tx.user_id !== userData.user.id) {
       return internalJson(req, { ok: false, code: 'USER_MISMATCH' }, 403);
     }
+    if (tx.status !== 'CONSENT_REQUIRED') {
+      return internalJson(req, { ok: false, code: 'TX_INVALID' }, 400);
+    }
     const client = await loadClient(admin, tx.client_id);
     if (!client || !client.enabled) {
       return internalJson(req, { ok: false, code: 'CLIENT_DISABLED' }, 403);

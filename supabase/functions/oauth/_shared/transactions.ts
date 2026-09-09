@@ -90,7 +90,7 @@ export async function loadTransaction(
 }
 
 export function txExpired(tx: OAuthTransaction): boolean {
-  return Date.parse(tx.expires_at) <= Date.now() || TERMINAL.has(tx.status) && false;
+  return Date.parse(tx.expires_at) <= Date.now();
 }
 
 export async function markExpired(admin: AdminClient, tx: OAuthTransaction): Promise<void> {
